@@ -1,41 +1,54 @@
-import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { createClient } from "@supabase/supabase-js";
+import jwt from "jsonwebtoken";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_KEY
 );
 
 export default async function handler(req, res) {
   try {
-    console.log("BODY:", req.body);
-     const { username, password } = req.body;
+    if (req.method !== "POST") {
+      return res.status(405).json({ message: "Method tidak diizinkan" });
+    }
 
-     const { data, error } = await supabase
-       .from('users')
-       .select('*')
-       .eq('username', username)
-       .single();
+    const { username, password } = req.body;
 
-     if (error || !data)
-       return res.status(401).json({ error: 'User tidak ditemukan' });
+    if (!username || !password) {
+      return res.status(400).json({ message: "Data tidak lengkap" });
+    }
 
-     const valid = await bcrypt.compare(password, data.password);
-     if (!valid)
-       return res.status(401).json({ error: 'Password salah' });
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("username", username)
+      .single();
 
-     const token = jwt.sign(
-       { id: data.id, username: data.username },
-       process.env.JWT_SECRET,
-       { expiresIn: '7d' }
-  );
+    if (error || !data) {
+      return res.status(401).json({ message: "User tidak ditemukan" });
+    }
 
-  res.json({ token, user: data });
-  res.status(200).json({ message: "OK" });
+    // sementara plain password (nanti bisa kita hash)
+    if (data.password !== password) {
+      return res.status(401).json({ message: "Password salah" });
+    }
+
+    const token = jwt.sign(
+      { id: data.id, username: data.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    return res.status(200).json({
+      message: "Login berhasil",
+      token
+    });
 
   } catch (err) {
     console.error("LOGIN ERROR:", err);
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({
+      message: "Internal server error",
+      error: err.message
+    });
   }
 }
