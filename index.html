@@ -308,6 +308,9 @@ function init() {
   }
 }
 
+function showAlert(message, type = "error") {
+  alert(message); // simple dulu biar pasti jalan
+}
 // ================= AUTH =================
 
 async function doLogin() {
@@ -339,20 +342,7 @@ async function doLogin() {
   }
 }
 
-function showAlert(id,msg,type) {
-  const el=document.getElementById(id);
-  el.className='alert '+(type==='e'?'ae':'as');
-  el.textContent=(type==='e'?'⚠️ ':'✅ ')+msg;
-}
 
-function showPage(pageId) {
-  document.querySelectorAll(".page").forEach(p => {
-    p.style.display = "none";
-  });
-
-  const page = document.getElementById(pageId);
-  if (page) page.style.display = "block";
-}
 
 async function doRegister() {
   const u = document.getElementById('rUser').value.trim();
