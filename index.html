@@ -388,6 +388,12 @@ async function doRegister() {
   }
 }
 
+function updateNav() {
+  if (!currentUser) return;
+  document.getElementById('navUn').textContent = currentUser.username;
+  document.getElementById('navAv').textContent = currentUser.username.substring(0,2).toUpperCase();
+}
+
 function doLogout() {
   localStorage.removeItem('token');
   localStorage.removeItem('tc_user');
