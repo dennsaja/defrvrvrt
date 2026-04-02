@@ -321,8 +321,8 @@ function showAlert(message, type = "error") {
 
 async function doLogin() {
   try {
-    const userEl = document.getElementById("username");
-    const passEl = document.getElementById("password");
+    const userEl = document.getElementById("loginUser");
+    const passEl = document.getElementById("loginPass");
 
     if (!userEl || !passEl) {
       alert("Input tidak ditemukan!");
