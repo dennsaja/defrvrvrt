@@ -311,39 +311,47 @@ function init() {
 // ================= AUTH =================
 
 async function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-
-  if (!u || !p) {
-    showAlert('loginAlert','Username dan password wajib diisi!','e');
-    return;
-  }
-
   try {
-    const res = await fetch('/api/login', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({username:u,password:p})
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ username, password })
     });
 
     const data = await res.json();
 
-    if (data.error) {
-      showAlert('loginAlert', data.error, 'e');
+    if (!res.ok) {
+      showAlert(data.message || "Login gagal");
       return;
     }
 
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('tc_user', JSON.stringify(data.user));
+    showAlert("Login berhasil", "success");
+    showPage("dashboard");
 
-    token = data.token;
-    currentUser = data.user;
-
-    showPage('dashboard');
-
-  } catch(e) {
-    showAlert('loginAlert','Server error','e');
+  } catch (err) {
+    console.error(err);
+    showAlert("Server error!");
   }
+}
+
+function showAlert(id,msg,type) {
+  const el=document.getElementById(id);
+  el.className='alert '+(type==='e'?'ae':'as');
+  el.textContent=(type==='e'?'⚠️ ':'✅ ')+msg;
+}
+
+function showPage(pageId) {
+  document.querySelectorAll(".page").forEach(p => {
+    p.style.display = "none";
+  });
+
+  const page = document.getElementById(pageId);
+  if (page) page.style.display = "block";
 }
 
 async function doRegister() {
