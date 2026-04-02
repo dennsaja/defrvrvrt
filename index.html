@@ -314,6 +314,15 @@ function showPage(p) {
   if (p==='dashboard') { updateNav(); goTab('dash', document.getElementById('ni-dash')); }
 }
 
+function goTab(tab, el) {
+  document.querySelectorAll('.ni').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  if (tab==='dash') renderDash();
+  else if (tab==='lap') renderLap();
+  else if (tab==='riw') renderRiw();
+  else if (tab==='profil') renderProfil();
+}
+
 function showAlert(message, type = "error") {
   alert(message); // simple dulu biar pasti jalan
 }
