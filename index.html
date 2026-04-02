@@ -321,21 +321,8 @@ function showAlert(message, type = "error") {
 
 async function doLogin() {
   try {
-    const userEl = document.getElementById("loginUser");
-    const passEl = document.getElementById("loginPass");
-
-    if (!userEl || !passEl) {
-      alert("Input tidak ditemukan!");
-      return;
-    }
-
-    const username = userEl.value;
-    const password = passEl.value;
-
-    if (!username || !password) {
-      alert("Harap isi semua field");
-      return;
-    }
+    const username = document.getElementById("LoginUser").value;
+    const password = document.getElementById("LoginPass").value;
 
     const res = await fetch("/api/login", {
       method: "POST",
@@ -345,7 +332,16 @@ async function doLogin() {
       body: JSON.stringify({ username, password })
     });
 
-    const data = await res.json();
+    let data;
+
+    try {
+      data = await res.json();
+    } catch {
+      const text = await res.text();
+      console.error("Response bukan JSON:", text);
+      alert("Server error: " + text);
+      return;
+    }
 
     if (!res.ok) {
       alert(data.message || "Login gagal");
@@ -357,7 +353,7 @@ async function doLogin() {
 
   } catch (err) {
     console.error(err);
-    alert("Terjadi error");
+    alert("Tidak bisa konek ke server");
   }
 }
 
