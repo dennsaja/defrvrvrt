@@ -323,6 +323,270 @@ function goTab(tab, el) {
   else if (tab==='profil') renderProfil();
 }
 
+async function renderDash() {
+  const con = document.getElementById('con');
+  const today = new Date().toISOString().split('T')[0];
+
+  let mine = [];
+
+  try {
+    const res = await fetch('/api/laporan', {
+      headers: {
+        Authorization: 'Bearer ' + token
+      }
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      mine = data.filter(r => r.teknisi === currentUser.username);
+
+      // cache ke local (fallback)
+      localStorage.setItem('tc_lap_cache', JSON.stringify(mine));
+    } else {
+      throw new Error();
+    }
+
+  } catch (e) {
+    // fallback ke cache kalau server down
+    const cached = JSON.parse(localStorage.getItem('tc_lap_cache') || '[]');
+    mine = cached.filter(r => r.teknisi === currentUser.username);
+  }
+
+  const todayN = mine.filter(r => r.tanggal === today).length;
+  const baru = mine.filter(r => r.jenis_kegiatan === 'Pemasangan Baru').length;
+  const prb = mine.filter(r => r.jenis_kegiatan === 'Perbaikan').length;
+  const pml = mine.filter(r => r.jenis_kegiatan === 'Pemeliharaan').length;
+
+  con.innerHTML = `
+    <div class="dh">
+      <div class="dh-greet">${greet()}, Teknisi 👋</div>
+      <div class="dh-name">${currentUser.username}</div>
+      <div class="dh-badge"><div class="dot"></div>${todayN} kegiatan hari ini</div>
+    </div>
+
+    <div class="sgrid">
+      <div class="sc"><div class="sc-ico" style="background:#E8F4FF">📶</div><div class="sc-n">${baru}</div><div class="sc-l">Pemasangan Baru</div></div>
+      <div class="sc"><div class="sc-ico" style="background:#FFF8E6">🔧</div><div class="sc-n">${prb}</div><div class="sc-l">Perbaikan</div></div>
+      <div class="sc"><div class="sc-ico" style="background:#E6FAF5">🛡️</div><div class="sc-n">${pml}</div><div class="sc-l">Pemeliharaan</div></div>
+      <div class="sc"><div class="sc-ico" style="background:#F3E8FF">📊</div><div class="sc-n">${mine.length}</div><div class="sc-l">Total Laporan</div></div>
+    </div>
+
+    <div class="sec-ttl">Aktivitas Terbaru</div>
+
+    ${mine.length===0 ? `
+      <div class="empty">
+        <div class="ei">📋</div>
+        <div class="et">Belum ada laporan</div>
+        <div class="es">Buat laporan kegiatan pertama</div>
+      </div>
+    ` : [...mine].reverse().slice(0,3).map(r => {
+      const ico = r.jenis_kegiatan==='Pemasangan Baru'?'📶':r.jenis_kegiatan==='Perbaikan'?'🔧':'🛡️';
+      const bg = r.jenis_kegiatan==='Pemasangan Baru'?'#E8F4FF':r.jenis_kegiatan==='Perbaikan'?'#FFF8E6':'#E6FAF5';
+      const bc = r.jenis_kegiatan==='Pemasangan Baru'?'bb':r.jenis_kegiatan==='Perbaikan'?'bp':'bm';
+
+      return `
+        <div class="ai">
+          <div class="ai-ico" style="background:${bg}">${ico}</div>
+          <div>
+            <div class="ai-t">${r.jenis_kegiatan}</div>
+            <div class="ai-m">
+              ${r.nama_client && r.nama_client !== '-' ? '👤 ' + r.nama_client + ' · ' : ''}
+              📅 ${r.tanggal} ${r.waktu}
+            </div>
+          </div>
+          <div class="ai-b ${bc}">${r.jenis_kegiatan.split(' ')[0]}</div>
+        </div>
+      `;
+    }).join('')}
+  `;
+}
+
+function renderLap() {
+  uploadedB64 = null;
+
+  const now = new Date();
+  const d = now.toISOString().split('T')[0];
+  const t = now.toTimeString().substring(0,5);
+
+  document.getElementById('con').innerHTML = `
+    <div class="fcard" style="margin-bottom:0">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:3px">📋 Buat Laporan</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:16px">Isi semua field wajib sebelum submit</div>
+
+      <div class="fsec">Jenis Kegiatan</div>
+      <div class="kgrid">
+        <div><input type="radio" name="jenis" value="Pemasangan Baru" checked> Pemasangan Baru</div>
+        <div><input type="radio" name="jenis" value="Perbaikan"> Perbaikan</div>
+        <div><input type="radio" name="jenis" value="Pemeliharaan"> Pemeliharaan</div>
+      </div>
+
+      <div class="frow">
+        <input type="date" id="fTgl" value="${d}">
+        <input type="time" id="fWkt" value="${t}">
+      </div>
+
+      <input type="text" id="fCli" placeholder="Nama Client">
+      <textarea id="fCat" placeholder="Catatan"></textarea>
+      <input type="file" id="fFoto" accept="image/*">
+
+      <button onclick="submitLap()">Kirim</button>
+    </div>
+  `;
+}
+
+// PROFIL
+async function renderProfil() {
+
+  let cache = JSON.parse(localStorage.getItem('tc_lap_cache') || '[]');
+  let mine = cache.filter(r => r.teknisi === currentUser.username);
+
+  // 🔥 coba refresh dari API biar update
+  try {
+    const res = await fetch('/api/laporan', {
+      headers: {
+        Authorization: 'Bearer ' + token
+      }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      localStorage.setItem('tc_lap_cache', JSON.stringify(data));
+      mine = data.filter(r => r.teknisi === currentUser.username);
+    }
+  } catch (e) {
+    // fallback tetap pakai cache
+  }
+
+  document.getElementById('con').innerHTML = `
+    <div style="background:linear-gradient(135deg,#0A1628,#1a3a7a);border-radius:18px;padding:24px;text-align:center;color:#fff;margin-bottom:14px">
+      <div style="width:64px;height:64px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:24px;font-weight:700;border:3px solid rgba(255,255,255,.35)">
+        ${currentUser.username.substring(0,2).toUpperCase()}
+      </div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700">${currentUser.username}</div>
+      <div style="font-size:12px;opacity:.7;margin-top:3px">📱 ${currentUser.phone || '-'}</div>
+      <div style="font-size:11px;opacity:.5;margin-top:3px">
+        Bergabung: ${new Date(currentUser.created_at).toLocaleDateString('id-ID',{year:'numeric',month:'long',day:'numeric'})}
+      </div>
+    </div>
+
+    <div class="sgrid" style="margin-bottom:14px">
+      <div class="sc"><div class="sc-n">${mine.length}</div><div class="sc-l">Total Laporan</div></div>
+      <div class="sc"><div class="sc-n">${mine.filter(r=>r.jenis_kegiatan==='Pemasangan Baru').length}</div><div class="sc-l">Pemasangan</div></div>
+      <div class="sc"><div class="sc-n">${mine.filter(r=>r.jenis_kegiatan==='Perbaikan').length}</div><div class="sc-l">Perbaikan</div></div>
+      <div class="sc"><div class="sc-n">${mine.filter(r=>r.jenis_kegiatan==='Pemeliharaan').length}</div><div class="sc-l">Pemeliharaan</div></div>
+    </div>
+
+    <div class="fcard">
+      <div class="fsec">Status Koneksi</div>
+
+      <div class="status-row ${cfg.supaUrl?'status-ok':'status-no'}">
+        <span>🗄️ Supabase</span>
+        <span>${cfg.supaUrl?'✅ Terhubung':'⚠️ Belum'}</span>
+      </div>
+
+      <div class="status-row ${cfg.gsUrl?'status-ok':'status-no'}" style="margin-top:6px">
+        <span>📊 Google Sheets</span>
+        <span>${cfg.gsUrl?'✅ Terhubung':'⚠️ Belum'}</span>
+      </div>
+
+      <div class="status-row ${cfg.gsCsvUrl?'status-ok':'status-no'}" style="margin-top:6px">
+        <span>📖 Baca Riwayat Sheets</span>
+        <span>${cfg.gsCsvUrl?'✅ Aktif':'⚠️ Belum'}</span>
+      </div>
+
+      <button onclick="document.getElementById('setupModal').classList.add('show')" style="width:100%;padding:11px;border:1.5px solid var(--bd);border-radius:var(--rads);background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:var(--p);cursor:pointer;margin-top:12px">
+        ⚙️ Ubah Konfigurasi
+      </button>
+
+      <button onclick="doLogout()" style="width:100%;padding:11px;border:1.5px solid #FFCCCC;border-radius:var(--rads);background:#FFF0F0;font-family:inherit;font-size:13px;font-weight:600;color:var(--r);cursor:pointer;margin-top:8px">
+        🚪 Keluar
+      </button>
+    </div>
+  `;
+}
+
+async function renderRiw() {
+  const con = document.getElementById('con');
+
+  con.innerHTML = `
+    <div style="background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:12px;border:1px solid var(--bd);box-shadow:var(--sh)">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:2px">📁 Riwayat Laporan</div>
+      <div style="font-size:12px;color:var(--t2)">Data dari server / Sheets</div>
+    </div>
+    <div class="loading-row"><div class="spin"></div><span>Mengambil data...</span></div>
+  `;
+
+  let rows = [];
+
+  // 🔥 PRIORITAS 1: API (Supabase via backend)
+  try {
+    const res = await fetch('/api/laporan', {
+      headers: {
+        Authorization: 'Bearer ' + token
+      }
+    });
+
+    if (res.ok) {
+      rows = await res.json();
+      localStorage.setItem('tc_lap_cache', JSON.stringify(rows));
+    } else {
+      throw new Error();
+    }
+
+  } catch (e) {
+
+    // 🔥 PRIORITAS 2: Google Sheets CSV
+    if (cfg.gsCsvUrl) {
+      try {
+        const res = await fetch(cfg.gsCsvUrl + '&t=' + Date.now());
+        const text = await res.text();
+        rows = parseCSV(text);
+      } catch (err) {
+        rows = null;
+      }
+    }
+
+    // 🔥 PRIORITAS 3: CACHE LOCAL
+    if (!rows || rows.length === 0) {
+      rows = JSON.parse(localStorage.getItem('tc_lap_cache') || '[]');
+    }
+  }
+
+  // 🔥 FILTER USER
+  const mine = rows.filter(r => r.teknisi === currentUser.username);
+
+  // 🔥 RENDER
+  if (mine.length === 0) {
+    con.innerHTML += `
+      <div class="empty">
+        <div class="ei">📋</div>
+        <div class="et">Belum ada laporan</div>
+        <div class="es">Data akan muncul setelah membuat laporan</div>
+      </div>
+    `;
+    return;
+  }
+
+  con.innerHTML += mine.reverse().map(r => {
+    const ico = r.jenis_kegiatan==='Pemasangan Baru'?'📶':r.jenis_kegiatan==='Perbaikan'?'🔧':'🛡️';
+    const bg = r.jenis_kegiatan==='Pemasangan Baru'?'#E8F4FF':r.jenis_kegiatan==='Perbaikan'?'#FFF8E6':'#E6FAF5';
+
+    return `
+      <div class="ai">
+        <div class="ai-ico" style="background:${bg}">${ico}</div>
+        <div>
+          <div class="ai-t">${r.jenis_kegiatan}</div>
+          <div class="ai-m">
+            ${r.nama_client && r.nama_client !== '-' ? '👤 ' + r.nama_client + ' · ' : ''}
+            📅 ${r.tanggal} ${r.waktu}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 function showAlert(message, type = "error") {
   alert(message); // simple dulu biar pasti jalan
 }
@@ -433,55 +697,50 @@ async function uploadToSupabase(base64) {
 // ================= SUBMIT =================
 
 async function submitLap() {
-  const jenis=document.querySelector('input[name="jenis"]:checked')?.value;
-  const tgl=document.getElementById('fTgl').value;
-  const wkt=document.getElementById('fWkt').value;
-  const cli=document.getElementById('fCli').value.trim();
-  const cat=document.getElementById('fCat').value.trim();
+  const jenis = document.querySelector('input[name="jenis"]:checked')?.value;
+  const tanggal = document.getElementById('fTgl')?.value;
+  const waktu = document.getElementById('fWkt')?.value;
+  const client = document.getElementById('fCli')?.value || '-';
+  const catatan = document.getElementById('fCat')?.value;
 
-  if(!tgl||!wkt||!cat||!uploadedB64){
-    toast('Lengkapi semua data!','err'); return;
+  if (!jenis || !tanggal || !waktu || !catatan) {
+    alert("Isi semua field wajib!");
+    return;
   }
 
-  let fotoUrl = null;
-
   try {
-    fotoUrl = await uploadToSupabase(uploadedB64);
-  } catch(e) {
-    console.log(e);
-  }
-
-  const payload = {
-    teknisi: currentUser.username,
-    hp: currentUser.phone,
-    jenis_kegiatan: jenis,
-    tanggal: tgl,
-    waktu: wkt,
-    nama_client: cli||'-',
-    catatan: cat,
-    foto_url: fotoUrl || '[Upload Gagal]'
-  };
-
-  try {
-    await fetch('/api/submit', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Bearer '+token
+    const res = await fetch('/api/laporan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + token
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        jenis_kegiatan: jenis,
+        tanggal,
+        waktu,
+        nama_client: client,
+        catatan,
+        foto: uploadedB64
+      })
     });
 
-    toast('✅ Laporan terkirim','ok');
+    const data = await res.json();
 
-  } catch(e) {
-    toast('Gagal kirim','err');
+    if (!res.ok) throw new Error(data.error);
+
+    alert("Berhasil kirim laporan!");
+    renderDash();
+
+  } catch (err) {
+    alert("Gagal kirim laporan!");
+    console.error(err);
   }
 }
 
 // ================= IMAGE COMPRESS =================
 
-function handleUpl(input) {
+async function handleUpl(input) {
   const file = input.files[0];
   if (!file) return;
 
@@ -489,27 +748,22 @@ function handleUpl(input) {
   const reader = new FileReader();
 
   reader.onload = e => img.src = e.target.result;
+  reader.readAsDataURL(file);
 
   img.onload = () => {
     const canvas = document.createElement('canvas');
-    const maxWidth = 800;
+    const ctx = canvas.getContext('2d');
 
-    const scale = maxWidth / img.width;
-    canvas.width = maxWidth;
+    const maxW = 800;
+    const scale = maxW / img.width;
+
+    canvas.width = maxW;
     canvas.height = img.height * scale;
 
-    const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    const compressed = canvas.toDataURL('image/jpeg', 0.7);
-
-    uploadedB64 = compressed;
-
-    document.getElementById('prevImg').src = compressed;
-    document.getElementById('prevImg').style.display = 'block';
+    uploadedB64 = canvas.toDataURL('image/jpeg', 0.7);
   };
-
-  reader.readAsDataURL(file);
 }
 
 // ================= INIT =================
