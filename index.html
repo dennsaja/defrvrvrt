@@ -321,8 +321,8 @@ function showAlert(message, type = "error") {
 
 async function doLogin() {
   try {
-    const username = document.getElementById("LoginUser").value;
-    const password = document.getElementById("LoginPass").value;
+    const username = document.getElementById("loginUser").value;
+    const password = document.getElementById("loginPass").value;
 
     const res = await fetch("/api/login", {
       method: "POST",
