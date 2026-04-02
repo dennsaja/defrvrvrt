@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --p:#0066FF;--pd:#0052CC;--pl:#E8F0FF;
+  --g:#00C48C;--gl:#E6FAF5;
+  --r:#FF3B30;--w:#F59E0B;
+  --bg:#F0F4FF;--s:#fff;--s2:#F7F9FF;
+  --t:#0A1628;--t2:#4A5568;--t3:#8896A6;
+  --bd:rgba(0,102,255,0.12);
+  --rad:16px;--rads:10px;
+  --sh:0 4px 24px rgba(0,102,255,0.08);
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
+.page{display:none;min-height:100vh;flex-direction:column}
+.page.active{display:flex}
+
+/* AUTH */
+.auth-bg{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#0A1628,#1a2d5a 50%,#0066FF)}
+.auth-card{background:#fff;border-radius:24px;padding:36px;width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,0.3)}
+.auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.logo-box{width:44px;height:44px;background:var(--p);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.logo-txt{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;color:var(--t);line-height:1.1}
+.logo-txt span{color:var(--p);font-size:11px;font-weight:500;display:block}
+.auth-title{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;margin-bottom:4px}
+.auth-sub{font-size:13px;color:var(--t2);margin-bottom:24px}
+.fg{margin-bottom:14px}
+.lbl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px;letter-spacing:.03em}
+.inp{width:100%;padding:12px 14px 12px 40px;border:1.5px solid #E2E8F0;border-radius:var(--rads);font-family:inherit;font-size:14px;color:var(--t);background:#FAFBFF;outline:none;transition:all .2s}
+.inp:focus{border-color:var(--p);background:#fff;box-shadow:0 0 0 3px rgba(0,102,255,0.08)}
+.inp::placeholder{color:var(--t3)}
+.inp-wrap{position:relative}
+.inp-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--t3)}
+.btn-auth{width:100%;padding:13px;border:none;border-radius:var(--rads);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;background:var(--p);color:#fff;margin-top:6px;box-shadow:0 4px 16px rgba(0,102,255,0.3);transition:all .2s}
+.btn-auth:hover{background:var(--pd);transform:translateY(-1px)}
+.btn-auth:disabled{background:#CBD5E0;cursor:not-allowed;transform:none;box-shadow:none}
+.sw{text-align:center;margin-top:16px;font-size:13px;color:var(--t2)}
+.sw a{color:var(--p);font-weight:600;cursor:pointer}
+.alert{padding:10px 14px;border-radius:var(--rads);font-size:13px;margin-bottom:12px;display:none}
+.ae{background:#FFF0F0;color:#C0392B;border:1px solid #FFCCCC;display:block}
+.as{background:var(--gl);color:#00856E;border:1px solid #9EEEDD;display:block}
+
+/* NAVBAR */
+.nb{background:#fff;padding:0 16px;height:58px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,102,255,0.06)}
+.nb-logo{display:flex;align-items:center;gap:8px}
+.nb-icon{width:34px;height:34px;background:var(--p);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.nb-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px}
+.nb-r{display:flex;align-items:center;gap:10px}
+.nb-user{display:flex;align-items:center;gap:7px;background:var(--pl);padding:5px 10px 5px 5px;border-radius:50px}
+.nb-av{width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.nb-un{font-size:13px;font-weight:600}
+.btn-out{padding:6px 12px;border:1.5px solid var(--bd);border-radius:7px;background:#fff;font-size:12px;font-weight:600;color:var(--r);cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-out:hover{background:#FFF0F0}
+
+/* BOTTOM NAV */
+.bnav{background:#fff;border-top:1px solid var(--bd);display:flex;position:sticky;bottom:0;box-shadow:0 -4px 20px rgba(0,102,255,0.08)}
+.ni{flex:1;padding:10px 8px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;border:none;background:none;font-family:inherit;position:relative}
+.ni.active{color:var(--p)}
+.ni.active::before{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;background:var(--p);border-radius:0 0 4px 4px}
+.ni-ico{font-size:20px;line-height:1}
+.ni-lbl{font-size:10px;font-weight:600}
+.ni:not(.active) .ni-lbl{color:var(--t3)}
+
+/* CONTENT */
+.con{flex:1;overflow-y:auto;padding:16px;max-width:600px;margin:0 auto;width:100%}
+
+/* CARDS */
+.dh{background:linear-gradient(135deg,#0A1628,#1a3a7a);border-radius:18px;padding:20px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden}
+.dh::after{content:'📡';position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:56px;opacity:.12}
+.dh-greet{font-size:12px;color:rgba(255,255,255,.7);margin-bottom:3px}
+.dh-name{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;margin-bottom:12px}
+.dh-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);padding:5px 12px;border-radius:50px;font-size:12px;font-weight:500}
+.dot{width:7px;height:7px;background:#00FF9D;border-radius:50%}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.sc{background:#fff;border-radius:var(--rad);padding:16px;box-shadow:var(--sh);border:1px solid var(--bd)}
+.sc-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:10px}
+.sc-n{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;line-height:1;margin-bottom:3px}
+.sc-l{font-size:11px;color:var(--t3);font-weight:500}
+.sec-ttl{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--t);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sec-ttl::after{content:'';flex:1;height:1px;background:var(--bd)}
+.ai{background:#fff;border-radius:var(--rads);padding:12px 14px;display:flex;align-items:center;gap:10px;border:1px solid var(--bd);margin-bottom:8px}
+.ai-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ai-t{font-size:13px;font-weight:600}
+.ai-m{font-size:11px;color:var(--t3);margin-top:2px}
+.ai-b{font-size:10px;font-weight:700;padding:3px 9px;border-radius:50px;margin-left:auto;flex-shrink:0}
+
+/* FORM */
+.fcard{background:#fff;border-radius:var(--rad);padding:18px;border:1px solid var(--bd);box-shadow:var(--sh);margin-bottom:12px}
+.fsec{font-size:11px;font-weight:700;color:var(--p);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:7px;border-bottom:2px solid var(--pl)}
+.kgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}
+.kr{display:none}
+.kl{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 6px;border:2px solid #E2E8F0;border-radius:var(--rads);cursor:pointer;transition:all .2s;text-align:center}
+.kl:hover,.kr:checked+.kl{border-color:var(--p);background:var(--pl)}
+.ke{font-size:22px}
+.kt{font-size:10px;font-weight:600;color:var(--t2);line-height:1.3}
+.kr:checked+.kl .kt{color:var(--p)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg2{margin-bottom:12px}
+.flbl{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px}
+.req{color:var(--r);font-size:13px}
+.opt{font-size:9px;font-weight:600;padding:2px 5px;border-radius:4px;background:#E2E8F0;color:var(--t3)}
+.fi{width:100%;padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:var(--rads);font-family:inherit;font-size:13px;color:var(--t);background:#FAFBFF;outline:none;transition:all .2s}
+.fi:focus{border-color:var(--p);background:#fff;box-shadow:0 0 0 3px rgba(0,102,255,0.08)}
+.upl{border:2px dashed #CBD5E0;border-radius:var(--rads);padding:20px 14px;text-align:center;cursor:pointer;background:#FAFBFF;position:relative;transition:all .2s}
+.upl:hover,.upl.ok{border-color:var(--p);background:var(--pl)}
+.upl input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upl-ico{font-size:28px;margin-bottom:6px}
+.upl-t{font-size:12px;font-weight:600;color:var(--t2)}
+.upl-s{font-size:10px;color:var(--t3);margin-top:3px}
+.prev{width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-top:8px;display:none}
+.btn-sub{width:100%;padding:14px;background:var(--p);color:#fff;border:none;border-radius:var(--rads);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:6px;box-shadow:0 4px 16px rgba(0,102,255,0.3);transition:all .2s}
+.btn-sub:hover{background:var(--pd);transform:translateY(-1px)}
+.btn-sub:disabled{background:#CBD5E0;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* RIWAYAT */
+.rc{background:#fff;border-radius:var(--rad);padding:14px;border:1px solid var(--bd);box-shadow:var(--sh);margin-bottom:10px}
+.rt{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.rtype{font-size:14px;font-weight:700}
+.rdate{font-size:11px;color:var(--t3);margin-top:2px}
+.rbadge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:50px;flex-shrink:0}
+.bb{background:var(--pl);color:var(--p)}
+.bp{background:#FFF8E6;color:#B7791F}
+.bm{background:var(--gl);color:#00856E}
+.rbody{font-size:12px;color:var(--t2);line-height:1.6}
+.rmeta{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.mc{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--t3);background:var(--s2);padding:3px 8px;border-radius:50px;border:1px solid var(--bd)}
+.empty{text-align:center;padding:36px 16px;color:var(--t3)}
+.ei{font-size:42px;margin-bottom:10px}
+.et{font-size:14px;font-weight:600;color:var(--t2);margin-bottom:4px}
+.es{font-size:12px}
+.loading-row{display:flex;align-items:center;gap:8px;padding:14px;color:var(--t3);font-size:13px}
+.spin{width:18px;height:18px;border:2px solid var(--pl);border-top-color:var(--p);border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* SETUP MODAL */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:12px;overflow-y:auto}
+.mo.show{display:flex}
+.mbox{background:#fff;border-radius:20px;padding:24px;width:100%;max-width:500px;margin:auto}
+.mttl{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px}
+.msub{font-size:12px;color:var(--t2);margin-bottom:16px}
+.step-list{margin-bottom:16px}
+.si{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:12px;color:var(--t2);line-height:1.5}
+.sn{width:20px;height:20px;background:var(--p);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}
+.tab-bar{display:flex;border-radius:var(--rads);background:var(--s2);padding:3px;gap:2px;margin-bottom:14px;border:1px solid var(--bd)}
+.tab-btn{flex:1;padding:7px;border:none;background:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;color:var(--t3);transition:all .2s}
+.tab-btn.active{background:#fff;color:var(--p);box-shadow:0 1px 6px rgba(0,0,0,0.08)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.code{background:#1a2d5a;color:#7dd3fc;border-radius:10px;padding:12px;font-size:10px;font-family:monospace;line-height:1.6;white-space:pre;overflow-x:auto;margin-bottom:12px;max-height:180px;overflow-y:auto}
+.ibox{background:#E8F4FD;border-radius:9px;padding:10px 12px;font-size:12px;color:#1a6fa1;line-height:1.6;margin-bottom:12px;border-left:3px solid #3b82f6}
+.wbox{background:#FFF8E6;border-radius:9px;padding:10px 12px;font-size:12px;color:#92400E;line-height:1.6;margin-bottom:12px;border-left:3px solid #F59E0B}
+.btn-save{width:100%;padding:12px;background:var(--p);color:#fff;border:none;border-radius:var(--rads);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;margin-bottom:6px}
+.btn-save:hover{background:var(--pd)}
+.btn-skip{width:100%;padding:10px;background:none;color:var(--t3);border:none;font-family:inherit;font-size:12px;cursor:pointer}
+.status-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);margin-bottom:8px;font-size:12px}
+.status-ok{background:var(--gl);border-color:#9EEEDD;color:#00856E}
+.status-no{background:#FFF8E6;border-color:#F6E05E;color:#92400E}
+
+/* TOAST */
+.toast{position:fixed;bottom:76px;left:50%;transform:translateX(-50%) translateY(100px);background:#1a2d5a;color:#fff;padding:10px 22px;border-radius:50px;font-size:13px;font-weight:600;transition:all .3s;z-index:1000;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,0.3);pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{background:var(--g)}
+.toast.err{background:var(--r)}
+
+/* LOADING FULL */
+.lov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:300}
+.lov.show{display:flex}
+.lbox{background:#fff;border-radius:16px;padding:28px 36px;text-align:center}
+.lspin{width:40px;height:40px;border:4px solid var(--pl);border-top-color:var(--p);border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 12px}
+.ltxt{font-size:13px;font-weight:600;color:var(--t2)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+<div class="lov" id="lov"><div class="lbox"><div class="lspin"></div><div class="ltxt" id="ltxt">Memproses...</div></div></div>
+
+<!-- SETUP MODAL -->
+<div class="mo" id="setupModal">
+<div class="mbox">
+  <div class="mttl">⚙️ Setup Koneksi</div>
+  <div class="msub">Konfigurasi Supabase (data user) dan Google Sheets (data laporan)</div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('supa')">1. Supabase</button>
+    <button class="tab-btn" onclick="switchTab('sheets')">2. Google Sheets</button>
+  </div>
+
+  <!-- SUPABASE TAB -->
+  <div class="tab-panel active" id="tab-supa">
+    <div class="ibox">Supabase menyimpan data <strong>akun teknisi</strong> (username, HP, password, tanggal daftar, dll).</div>
+
+    <div class="step-list">
+      <div class="si"><div class="sn">1</div><div>Buka <strong>supabase.com</strong> → login → klik <strong>New Project</strong></div></div>
+      <div class="si"><div class="sn">2</div><div>Isi nama project, password DB, pilih region <strong>Southeast Asia (Singapore)</strong></div></div>
+      <div class="si"><div class="sn">3</div><div>Tunggu project siap, lalu buka <strong>Settings → API</strong></div></div>
+      <div class="si"><div class="sn">4</div><div>Copy <strong>Project URL</strong> dan <strong>anon public key</strong></div></div>
+      <div class="si"><div class="sn">5</div><div>Buka <strong>SQL Editor</strong> di sidebar, paste SQL di bawah, klik <strong>Run</strong></div></div>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;">📋 SQL — jalankan di SQL Editor Supabase:</div>
+    <div class="code" id="sqlCode"></div>
+    <button onclick="copySQL()" style="width:100%;padding:8px;border:1.5px solid var(--p);border-radius:8px;background:var(--pl);color:var(--p);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:14px;">📋 Copy SQL</button>
+
+    <div class="fg"><label class="lbl">Project URL</label><div class="inp-wrap"><span class="inp-ico">🔗</span><input type="url" class="inp" id="sUrl" placeholder="https://xxxx.supabase.co"/></div></div>
+    <div class="fg"><label class="lbl">Anon Public Key</label><div class="inp-wrap"><span class="inp-ico">🔑</span><input type="text" class="inp" id="sKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."/></div></div>
+
+    <button class="btn-save" onclick="saveSupabase()">Simpan & Lanjut ke Sheets →</button>
+    <button class="btn-skip" onclick="skipToSheets()">Lewati Supabase (mode demo)</button>
+  </div>
+
+  <!-- SHEETS TAB -->
+  <div class="tab-panel" id="tab-sheets">
+    <div class="ibox">Google Sheets menyimpan semua <strong>data laporan kegiatan</strong>. Riwayat di app diambil langsung dari spreadsheet.</div>
+
+    <div class="step-list">
+      <div class="si"><div class="sn">1</div><div>Buat <strong>Google Sheets</strong> baru di spreadsheet.google.com</div></div>
+      <div class="si"><div class="sn">2</div><div>Klik <strong>Extensions → Apps Script</strong></div></div>
+      <div class="si"><div class="sn">3</div><div>Hapus semua kode default, paste script di bawah, klik <strong>💾 Save</strong></div></div>
+      <div class="si"><div class="sn">4</div><div><strong>Deploy → New deployment → Web App</strong><br>Execute as: <strong>Me</strong> | Access: <strong>Anyone</strong></div></div>
+      <div class="si"><div class="sn">5</div><div>Klik <strong>Authorize access</strong> → pilih akun Google → Allow</div></div>
+      <div class="si"><div class="sn">6</div><div>Copy URL deployment (diakhiri <code style="background:#eee;padding:1px 4px;border-radius:3px">/exec</code>) paste di bawah</div></div>
+    </div>
+
+    <div class="wbox">⚠️ Pastikan pilih <strong>Anyone</strong> (bukan "Anyone with Google Account") agar bisa terima request dari app.</div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;">📋 Apps Script — paste ke script editor:</div>
+    <div class="code" id="scriptCode"></div>
+    <button onclick="copyScript()" style="width:100%;padding:8px;border:1.5px solid var(--p);border-radius:8px;background:var(--pl);color:var(--p);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:14px;">📋 Copy Script</button>
+
+    <div class="fg"><label class="lbl">URL Web App (Apps Script)</label><div class="inp-wrap"><span class="inp-ico">🔗</span><input type="url" class="inp" id="gsUrl" placeholder="https://script.google.com/macros/s/.../exec"/></div></div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:6px;">Opsional: URL Sheets publik untuk baca riwayat</div>
+    <div class="fg"><label class="lbl">URL Sheets (Published CSV) <span class="opt">Opsional</span></label><div class="inp-wrap"><span class="inp-ico">📊</span><input type="url" class="inp" id="gsCsvUrl" placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv"/></div></div>
+    <div class="ibox" style="font-size:11px">Untuk URL CSV: File → Share → Publish to web → pilih sheet → CSV → Copy link</div>
+
+    <button class="btn-save" onclick="saveSheets()">✅ Simpan & Mulai</button>
+    <button class="btn-skip" onclick="skipSheets()">Lewati (mode demo)</button>
+  </div>
+</div>
+</div>
+
+<!-- LOGIN -->
+<div class="page active" id="page-login">
+<div class="auth-bg"><div class="auth-card">
+  <div class="auth-logo"><div class="logo-box">📡</div><div class="logo-txt">TechConnect<span>Sistem Manajemen Teknisi</span></div></div>
+  <div class="auth-title">Selamat Datang</div>
+  <div class="auth-sub">Masuk ke akun teknisi Anda</div>
+  <div class="alert" id="loginAlert"></div>
+  <div class="fg"><label class="lbl">Username</label><div class="inp-wrap"><span class="inp-ico">👤</span><input type="text" class="inp" id="loginUser" placeholder="Username" /></div></div>
+  <div class="fg"><label class="lbl">Password</label><div class="inp-wrap"><span class="inp-ico">🔒</span><input type="password" class="inp" id="loginPass" placeholder="Password" /></div></div>
+  <button class="btn-auth" id="loginBtn" onclick="doLogin()">🚀 Masuk</button>
+  <div class="sw">Belum punya akun? <a onclick="showPage('register')">Daftar</a></div>
+  <div style="margin-top:12px;text-align:center"><a onclick="document.getElementById('setupModal').classList.add('show')" style="font-size:12px;color:var(--t3);cursor:pointer;">⚙️ Setup koneksi</a></div>
+</div></div>
+</div>
+
+<!-- REGISTER -->
+<div class="page" id="page-register">
+<div class="auth-bg"><div class="auth-card">
+  <div class="auth-logo"><div class="logo-box">📡</div><div class="logo-txt">TechConnect<span>Sistem Manajemen Teknisi</span></div></div>
+  <div class="auth-title">Buat Akun Baru</div>
+  <div class="auth-sub">Daftarkan diri sebagai teknisi</div>
+  <div class="alert" id="regAlert"></div>
+  <div class="fg"><label class="lbl">Username</label><div class="inp-wrap"><span class="inp-ico">👤</span><input type="text" class="inp" id="rUser" placeholder="Username unik"/></div></div>
+  <div class="fg"><label class="lbl">Nomor HP</label><div class="inp-wrap"><span class="inp-ico">📱</span><input type="tel" class="inp" id="rPhone" placeholder="08xxxxxxxxxx"/></div></div>
+  <div class="fg"><label class="lbl">Password</label><div class="inp-wrap"><span class="inp-ico">🔒</span><input type="password" class="inp" id="rPass" placeholder="Min. 6 karakter"/></div></div>
+  <div class="fg"><label class="lbl">Konfirmasi Password</label><div class="inp-wrap"><span class="inp-ico">🔑</span><input type="password" class="inp" id="rPass2" placeholder="Ulangi password"/></div></div>
+  <button class="btn-auth" id="regBtn" onclick="doRegister()">✅ Daftar Sekarang</button>
+  <div class="sw">Sudah punya akun? <a onclick="showPage('login')">Masuk</a></div>
+</div></div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="page" id="page-dashboard">
+  <div class="nb">
+    <div class="nb-logo"><div class="nb-icon">📡</div><div class="nb-name">TechConnect</div></div>
+    <div class="nb-r">
+      <div class="nb-user"><div class="nb-av" id="navAv">TK</div><div class="nb-un" id="navUn">Teknisi</div></div>
+      <button class="btn-out" onclick="doLogout()">Keluar</button>
+    </div>
+  </div>
+  <div class="con" id="con"></div>
+  <div class="bnav">
+    <button class="ni active" id="ni-dash" onclick="goTab('dash',this)"><span class="ni-ico">🏠</span><span class="ni-lbl">Beranda</span></button>
+    <button class="ni" id="ni-lap" onclick="goTab('lap',this)"><span class="ni-ico">📋</span><span class="ni-lbl">Laporan</span></button>
+    <button class="ni" id="ni-riw" onclick="goTab('riw',this)"><span class="ni-ico">📁</span><span class="ni-lbl">Riwayat</span></button>
+    <button class="ni" id="ni-profil" onclick="goTab('profil',this)"><span class="ni-ico">👤</span><span class="ni-lbl">Profil</span></button>
+  </div>
+</div>
+
+<script>
+let cfg = JSON.parse(localStorage.getItem('tc_cfg')||'{}');
+let currentUser = JSON.parse(localStorage.getItem('tc_user')||'null');
+let uploadedB64 = null;
+let token = localStorage.getItem('token');
+
+// INIT
+function init() {
+  if (currentUser && token) {
+    showPage('dashboard');
+  } else {
+    showPage('login');
+  }
+}
+
+// ================= AUTH =================
+
+async function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+
+  if (!u || !p) {
+    showAlert('loginAlert','Username dan password wajib diisi!','e');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username:u,password:p})
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+      showAlert('loginAlert', data.error, 'e');
+      return;
+    }
+
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('tc_user', JSON.stringify(data.user));
+
+    token = data.token;
+    currentUser = data.user;
+
+    showPage('dashboard');
+
+  } catch(e) {
+    showAlert('loginAlert','Server error','e');
+  }
+}
+
+async function doRegister() {
+  const u = document.getElementById('rUser').value.trim();
+  const ph = document.getElementById('rPhone').value.trim();
+  const p = document.getElementById('rPass').value;
+  const p2 = document.getElementById('rPass2').value;
+
+  if (!u||!ph||!p||!p2) return showAlert('regAlert','Semua wajib!','e');
+  if (p !== p2) return showAlert('regAlert','Password tidak sama','e');
+
+  try {
+    const res = await fetch('/api/register', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username:u,phone:ph,password:p})
+    });
+
+    const data = await res.json();
+
+    if (data.error) return showAlert('regAlert',data.error,'e');
+
+    showAlert('regAlert','Berhasil daftar!','s');
+
+    setTimeout(()=>showPage('login'),1000);
+
+  } catch(e) {
+    showAlert('regAlert','Server error','e');
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('tc_user');
+  currentUser = null;
+  token = null;
+  showPage('login');
+}
+
+// ================= UPLOAD =================
+
+async function uploadToSupabase(base64) {
+  const res = await fetch('/api/upload', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+token
+    },
+    body: JSON.stringify({ base64 })
+  });
+
+  const data = await res.json();
+
+  if (data.error) throw new Error(data.error);
+
+  return data.url;
+}
+
+// ================= SUBMIT =================
+
+async function submitLap() {
+  const jenis=document.querySelector('input[name="jenis"]:checked')?.value;
+  const tgl=document.getElementById('fTgl').value;
+  const wkt=document.getElementById('fWkt').value;
+  const cli=document.getElementById('fCli').value.trim();
+  const cat=document.getElementById('fCat').value.trim();
+
+  if(!tgl||!wkt||!cat||!uploadedB64){
+    toast('Lengkapi semua data!','err'); return;
+  }
+
+  let fotoUrl = null;
+
+  try {
+    fotoUrl = await uploadToSupabase(uploadedB64);
+  } catch(e) {
+    console.log(e);
+  }
+
+  const payload = {
+    teknisi: currentUser.username,
+    hp: currentUser.phone,
+    jenis_kegiatan: jenis,
+    tanggal: tgl,
+    waktu: wkt,
+    nama_client: cli||'-',
+    catatan: cat,
+    foto_url: fotoUrl || '[Upload Gagal]'
+  };
+
+  try {
+    await fetch('/api/submit', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+token
+      },
+      body: JSON.stringify(payload)
+    });
+
+    toast('✅ Laporan terkirim','ok');
+
+  } catch(e) {
+    toast('Gagal kirim','err');
+  }
+}
+
+// ================= IMAGE COMPRESS =================
+
+function handleUpl(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const img = new Image();
+  const reader = new FileReader();
+
+  reader.onload = e => img.src = e.target.result;
+
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    const maxWidth = 800;
+
+    const scale = maxWidth / img.width;
+    canvas.width = maxWidth;
+    canvas.height = img.height * scale;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const compressed = canvas.toDataURL('image/jpeg', 0.7);
+
+    uploadedB64 = compressed;
+
+    document.getElementById('prevImg').src = compressed;
+    document.getElementById('prevImg').style.display = 'block';
+  };
+
+  reader.readAsDataURL(file);
+}
+
+// ================= INIT =================
+
+init();
+</script>
+</body></html>
