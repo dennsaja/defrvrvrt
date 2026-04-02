@@ -308,6 +308,12 @@ function init() {
   }
 }
 
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  if (p==='dashboard') { updateNav(); goTab('dash', document.getElementById('ni-dash')); }
+}
+
 function showAlert(message, type = "error") {
   alert(message); // simple dulu biar pasti jalan
 }
