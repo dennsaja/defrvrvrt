@@ -404,33 +404,57 @@ async function renderDash() {
 
 function renderLap() {
   uploadedB64 = null;
-
   const now = new Date();
   const d = now.toISOString().split('T')[0];
   const t = now.toTimeString().substring(0,5);
 
   document.getElementById('con').innerHTML = `
     <div class="fcard" style="margin-bottom:0">
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:3px">📋 Buat Laporan</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:3px">Buat Laporan Kegiatan</div>
       <div style="font-size:12px;color:var(--t2);margin-bottom:16px">Isi semua field wajib sebelum submit</div>
 
       <div class="fsec">Jenis Kegiatan</div>
       <div class="kgrid">
-        <div><input type="radio" name="jenis" value="Pemasangan Baru" checked> Pemasangan Baru</div>
-        <div><input type="radio" name="jenis" value="Perbaikan"> Perbaikan</div>
-        <div><input type="radio" name="jenis" value="Pemeliharaan"> Pemeliharaan</div>
+        <div><input type="radio" name="jenis" id="j1" value="Pemasangan Baru" class="kr" checked><label for="j1" class="kl"><span class="ke">📶</span><span class="kt">Pemasangan Baru</span></label></div>
+        <div><input type="radio" name="jenis" id="j2" value="Perbaikan" class="kr"><label for="j2" class="kl"><span class="ke">🔧</span><span class="kt">Perbaikan</span></label></div>
+        <div><input type="radio" name="jenis" id="j3" value="Pemeliharaan" class="kr"><label for="j3" class="kl"><span class="ke">🛡️</span><span class="kt">Pemeliharaan</span></label></div>
       </div>
 
+      <div class="fsec">Waktu & Tanggal</div>
       <div class="frow">
-        <input type="date" id="fTgl" value="${d}">
-        <input type="time" id="fWkt" value="${t}">
+        <div class="fg2">
+          <label class="flbl">Tanggal <span class="req">*</span></label>
+          <input type="date" class="fi" id="fTgl" value="${d}">
+        </div>
+        <div class="fg2">
+          <label class="flbl">Waktu <span class="req">*</span></label>
+          <input type="time" class="fi" id="fWkt" value="${t}">
+        </div>
       </div>
 
-      <input type="text" id="fCli" placeholder="Nama Client">
-      <textarea id="fCat" placeholder="Catatan"></textarea>
-      <input type="file" id="fFoto" accept="image/*">
+      <div class="fsec">Data Client & Catatan</div>
+      <div class="fg2">
+        <label class="flbl">Nama Client <span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:4px;background:#E2E8F0;color:var(--t3)">Opsional</span></label>
+        <input type="text" class="fi" id="fCli" placeholder="Nama client / pelanggan">
+      </div>
+      <div class="fg2">
+        <label class="flbl">Catatan Kegiatan <span class="req">*</span></label>
+        <textarea class="fi" id="fCat" rows="3" placeholder="Deskripsi kegiatan yang dilakukan..." style="resize:vertical"></textarea>
+      </div>
 
-      <button onclick="submitLap()">Kirim</button>
+      <div class="fsec">Dokumentasi Foto</div>
+      <div class="fg2">
+        <label class="flbl">Foto Dokumentasi <span class="req">*</span></label>
+        <div class="upl" id="uplZone">
+          <input type="file" id="fFoto" accept="image/*" onchange="handleUpl(this)">
+          <div class="upl-ico">📷</div>
+          <div class="upl-t" id="uplTxt">Tap untuk pilih foto</div>
+          <div class="upl-s">JPG, PNG - Maks 5MB</div>
+          <img id="prevImg" class="prev">
+        </div>
+      </div>
+
+      <button class="btn-sub" id="btnSub" onclick="submitLap()">Kirim Laporan</button>
     </div>
   `;
 }
@@ -587,77 +611,126 @@ async function renderRiw() {
   }).join('');
 }
 
-function showAlert(message, type = "error") {
-  alert(message); // simple dulu biar pasti jalan
+function setAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'alert ' + (type==='e' ? 'ae' : 'as');
+  el.textContent = (type==='e' ? '⚠️ ' : '✅ ') + msg;
+}
+
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' '+type : '') + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function showLoading(txt='Memproses...') {
+  const el = document.getElementById('ltxt');
+  if (el) el.textContent = txt;
+  document.getElementById('lov')?.classList.add('show');
+}
+
+function hideLoading() {
+  document.getElementById('lov')?.classList.remove('show');
+}
+
+function greet() {
+  const h = new Date().getHours();
+  if(h<12) return 'Selamat Pagi';
+  if(h<15) return 'Selamat Siang';
+  if(h<18) return 'Selamat Sore';
+  return 'Selamat Malam';
 }
 // ================= AUTH =================
 
 async function doLogin() {
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = '⏳ Masuk...';
+
   try {
-    const username = document.getElementById("loginUser").value;
+    const username = document.getElementById("loginUser").value.trim();
     const password = document.getElementById("loginPass").value;
+
+    if (!username || !password) {
+      setAlert('loginAlert', 'Username dan password wajib diisi!', 'e');
+      return;
+    }
 
     const res = await fetch("/api/login", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password })
     });
 
     let data;
-
     try {
       data = await res.json();
     } catch {
       const text = await res.text();
-      console.error("Response bukan JSON:", text);
-      alert("Server error: " + text);
+      setAlert('loginAlert', 'Server error: ' + text, 'e');
       return;
     }
 
     if (!res.ok) {
-      alert(data.message || "Login gagal");
+      setAlert('loginAlert', data.message || "Login gagal", 'e');
       return;
     }
 
-    alert("Login berhasil");
+    // FIX: simpan token DAN user ke localStorage
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('token', token);
+    localStorage.setItem('tc_user', JSON.stringify(currentUser));
+
     showPage("dashboard");
 
   } catch (err) {
     console.error(err);
-    alert("Tidak bisa konek ke server");
+    setAlert('loginAlert', 'Tidak bisa konek ke server. Cek koneksi internet.', 'e');
+  } finally {
+    btn.disabled = false; btn.textContent = '🚀 Masuk';
   }
 }
 
 
 
 async function doRegister() {
+  const btn = document.getElementById('regBtn');
+  btn.disabled = true; btn.textContent = '⏳ Mendaftar...';
+
   const u = document.getElementById('rUser').value.trim();
   const ph = document.getElementById('rPhone').value.trim();
   const p = document.getElementById('rPass').value;
   const p2 = document.getElementById('rPass2').value;
 
-  if (!u||!ph||!p||!p2) return showAlert('regAlert','Semua wajib!','e');
-  if (p !== p2) return showAlert('regAlert','Password tidak sama','e');
+  if (!u||!ph||!p||!p2) { setAlert('regAlert','Semua field wajib diisi!','e'); btn.disabled=false; btn.textContent='✅ Daftar Sekarang'; return; }
+  if (p.length < 6) { setAlert('regAlert','Password minimal 6 karakter!','e'); btn.disabled=false; btn.textContent='✅ Daftar Sekarang'; return; }
+  if (p !== p2) { setAlert('regAlert','Password tidak sama','e'); btn.disabled=false; btn.textContent='✅ Daftar Sekarang'; return; }
+  if (!/^08\d{8,11}$/.test(ph)) { setAlert('regAlert','Format HP: 08xxxxxxxxxx','e'); btn.disabled=false; btn.textContent='✅ Daftar Sekarang'; return; }
 
   try {
     const res = await fetch('/api/register', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({username:u,phone:ph,password:p})
+      body: JSON.stringify({username:u, phone:ph, password:p})
     });
 
     const data = await res.json();
 
-    if (data.error) return showAlert('regAlert',data.error,'e');
+    if (!res.ok || data.error) {
+      setAlert('regAlert', data.error || data.message || 'Gagal mendaftar', 'e');
+      return;
+    }
 
-    showAlert('regAlert','Berhasil daftar!','s');
-
-    setTimeout(()=>showPage('login'),1000);
+    setAlert('regAlert','Akun berhasil dibuat! Silakan login.','s');
+    setTimeout(()=>showPage('login'), 1500);
 
   } catch(e) {
-    showAlert('regAlert','Server error','e');
+    setAlert('regAlert','Tidak bisa konek ke server','e');
+  } finally {
+    btn.disabled=false; btn.textContent='✅ Daftar Sekarang';
   }
 }
 
@@ -700,20 +773,30 @@ async function submitLap() {
   const jenis = document.querySelector('input[name="jenis"]:checked')?.value;
   const tanggal = document.getElementById('fTgl')?.value;
   const waktu = document.getElementById('fWkt')?.value;
-  const client = document.getElementById('fCli')?.value || '-';
-  const catatan = document.getElementById('fCat')?.value;
+  const client = document.getElementById('fCli')?.value?.trim() || '-';
+  const catatan = document.getElementById('fCat')?.value?.trim();
 
   if (!jenis || !tanggal || !waktu || !catatan) {
-    alert("Isi semua field wajib!");
+    toast('Isi semua field yang wajib!', 'err');
     return;
   }
 
+  if (!uploadedB64) {
+    toast('Foto dokumentasi wajib diupload!', 'err');
+    return;
+  }
+
+  const btn = document.getElementById('btnSub');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Mengirim...'; }
+  showLoading('Menyimpan laporan...');
+
   try {
+    // FIX: teknisi diambil dari JWT di server, tidak perlu kirim dari client
     const res = await fetch('/api/laporan', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token
+        'Authorization': 'Bearer ' + token
       },
       body: JSON.stringify({
         jenis_kegiatan: jenis,
@@ -726,15 +809,33 @@ async function submitLap() {
     });
 
     const data = await res.json();
+    hideLoading();
 
-    if (!res.ok) throw new Error(data.error);
+    if (!res.ok) {
+      toast('Gagal: ' + (data.error || 'Server error'), 'err');
+      return;
+    }
 
-    alert("Berhasil kirim laporan!");
-    renderDash();
+    toast('✅ Laporan berhasil dikirim!', 'ok');
+
+    // Cache lokal untuk fallback
+    const cache = JSON.parse(localStorage.getItem('tc_lap_cache') || '[]');
+    cache.push({
+      teknisi: currentUser.username,
+      jenis_kegiatan: jenis, tanggal, waktu,
+      nama_client: client, catatan,
+      created_at: new Date().toISOString()
+    });
+    localStorage.setItem('tc_lap_cache', JSON.stringify(cache));
+
+    setTimeout(() => goTab('riw', document.getElementById('ni-riw')), 1500);
 
   } catch (err) {
-    alert("Gagal kirim laporan!");
+    hideLoading();
+    toast('Gagal konek ke server', 'err');
     console.error(err);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📤 Kirim Laporan'; }
   }
 }
 
@@ -744,26 +845,35 @@ async function handleUpl(input) {
   const file = input.files[0];
   if (!file) return;
 
-  const img = new Image();
+  if (file.size > 5 * 1024 * 1024) {
+    toast('File terlalu besar! Maks 5MB', 'err');
+    return;
+  }
+
   const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.src = e.target.result;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const maxW = 800;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      uploadedB64 = canvas.toDataURL('image/jpeg', 0.7);
 
-  reader.onload = e => img.src = e.target.result;
-  reader.readAsDataURL(file);
-
-  img.onload = () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const maxW = 800;
-    const scale = maxW / img.width;
-
-    canvas.width = maxW;
-    canvas.height = img.height * scale;
-
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    uploadedB64 = canvas.toDataURL('image/jpeg', 0.7);
+      // Update UI
+      const prev = document.getElementById('prevImg');
+      const zone = document.getElementById('uplZone');
+      const txt = document.getElementById('uplTxt');
+      if (prev) { prev.src = uploadedB64; prev.style.display = 'block'; }
+      if (zone) zone.classList.add('ok');
+      if (txt) txt.textContent = '✅ ' + file.name;
+    };
   };
+  reader.readAsDataURL(file);
 }
 
 // ================= INIT =================
