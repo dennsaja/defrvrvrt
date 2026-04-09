@@ -172,6 +172,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .lbox{background:#fff;border-radius:16px;padding:28px 36px;text-align:center}
 .lspin{width:40px;height:40px;border:4px solid var(--pl);border-top-color:var(--p);border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 12px}
 .ltxt{font-size:13px;font-weight:600;color:var(--t2)}
+
+/* DETAIL PAGE */
+.detail-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd)}
+.detail-row:last-child{border-bottom:none}
+.detail-lbl{font-size:12px;color:var(--t3)}
+.detail-val{font-size:13px;font-weight:600;color:var(--t);text-align:right;max-width:60%}
+
 </style>
 </head>
 <body>
@@ -532,79 +539,79 @@ async function renderProfil() {
 
 async function renderRiw() {
   const con = document.getElementById('con');
-
   con.innerHTML = `
     <div style="background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:12px;border:1px solid var(--bd);box-shadow:var(--sh)">
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:2px">📁 Riwayat Laporan</div>
-      <div style="font-size:12px;color:var(--t2)">Data dari server / Sheets</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:2px">Riwayat Laporan</div>
+      <div style="font-size:12px;color:var(--t2)">Data dari server</div>
     </div>
     <div class="loading-row"><div class="spin"></div><span>Mengambil data...</span></div>
   `;
 
   let rows = [];
 
-  // 🔥 PRIORITAS 1: API (Supabase via backend)
+  // Prioritas 1: Ambil dari Supabase via API (sudah ada foto URL)
   try {
     const res = await fetch('/api/laporan', {
-      headers: {
-        Authorization: 'Bearer ' + token
-      }
+      headers: { Authorization: 'Bearer ' + token }
     });
-
     if (res.ok) {
       rows = await res.json();
       localStorage.setItem('tc_lap_cache', JSON.stringify(rows));
-    } else {
-      throw new Error();
-    }
-
+    } else { throw new Error(); }
   } catch (e) {
-
-    // 🔥 PRIORITAS 2: Google Sheets CSV
-    if (cfg.gsCsvUrl) {
-      try {
-        const res = await fetch(cfg.gsCsvUrl + '&t=' + Date.now());
-        const text = await res.text();
-        rows = parseCSV(text);
-      } catch (err) {
-        rows = null;
-      }
-    }
-
-    // 🔥 PRIORITAS 3: CACHE LOCAL
-    if (!rows || rows.length === 0) {
-      rows = JSON.parse(localStorage.getItem('tc_lap_cache') || '[]');
-    }
+    // Prioritas 2: Cache lokal
+    rows = JSON.parse(localStorage.getItem('tc_lap_cache') || '[]');
   }
 
-  // 🔥 FILTER USER
-  const mine = rows.filter(r => r.teknisi === currentUser.username);
+  // Filter punya user ini
+  const mine = rows.filter(r =>
+    (r.teknisi || r['Teknisi'] || '') === currentUser.username
+  );
 
-  // 🔥 RENDER
+  const header = `
+    <div style="background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:12px;border:1px solid var(--bd);box-shadow:var(--sh)">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:2px">Riwayat Laporan</div>
+      <div style="font-size:12px;color:var(--t2)">${mine.length} laporan ditemukan</div>
+    </div>
+  `;
+
   if (mine.length === 0) {
-    con.innerHTML += `
+    con.innerHTML = header + `
       <div class="empty">
-        <div class="ei">📋</div>
+        <div class="ei">📂</div>
         <div class="et">Belum ada laporan</div>
-        <div class="es">Data akan muncul setelah membuat laporan</div>
+        <div class="es">Buat laporan kegiatan pertama Anda</div>
       </div>
     `;
     return;
   }
 
-  con.innerHTML += mine.reverse().map(r => {
-    const ico = r.jenis_kegiatan==='Pemasangan Baru'?'📶':r.jenis_kegiatan==='Perbaikan'?'🔧':'🛡️';
-    const bg = r.jenis_kegiatan==='Pemasangan Baru'?'#E8F4FF':r.jenis_kegiatan==='Perbaikan'?'#FFF8E6':'#E6FAF5';
+  con.innerHTML = header + mine.map(r => {
+    const j = r.jenis_kegiatan || r['Jenis Kegiatan'] || '-';
+    const tgl = r.tanggal || r['Tanggal'] || '-';
+    const wkt = (r.waktu || r['Waktu'] || '-').substring(0, 5);
+    const cli = r.nama_client || r['Nama Client'] || '-';
+    const cat = r.catatan || r['Catatan'] || '-';
+    const ico = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : '🛡️';
+    const bg  = j === 'Pemasangan Baru' ? '#E8F4FF' : j === 'Perbaikan' ? '#FFF8E6' : '#E6FAF5';
+    const bc  = j === 'Pemasangan Baru' ? 'bb' : j === 'Perbaikan' ? 'bp' : 'bm';
+    const id  = r.id || r['No'] || '';
+    const fotoUrl = r.foto || r['URL Foto'] || '';
 
     return `
-      <div class="ai">
-        <div class="ai-ico" style="background:${bg}">${ico}</div>
-        <div>
-          <div class="ai-t">${r.jenis_kegiatan}</div>
-          <div class="ai-m">
-            ${r.nama_client && r.nama_client !== '-' ? '👤 ' + r.nama_client + ' · ' : ''}
-            📅 ${r.tanggal} ${r.waktu}
+      <div class="rc" onclick="showDetail(${JSON.stringify(JSON.stringify(r))})" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div class="rt">
+          <div>
+            <div class="rtype">${ico} ${j}</div>
+            <div class="rdate">${tgl} · ${wkt}</div>
           </div>
+          <div class="rbadge ${bc}">${j === 'Pemasangan Baru' ? 'Baru' : j}</div>
+        </div>
+        <div class="rbody" style="margin-bottom:6px">${cat.length > 80 ? cat.substring(0,80)+'...' : cat}</div>
+        <div class="rmeta">
+          ${cli && cli !== '-' ? `<div class="mc">👤 ${cli}</div>` : ''}
+          ${fotoUrl && fotoUrl !== '-' ? '<div class="mc">📷 Ada foto</div>' : ''}
+          <div class="mc" style="margin-left:auto;color:var(--p);font-weight:600">Lihat detail →</div>
         </div>
       </div>
     `;
@@ -875,6 +882,97 @@ async function handleUpl(input) {
     };
   };
   reader.readAsDataURL(file);
+}
+
+
+// ================= DETAIL LAPORAN =================
+
+function showDetail(jsonStr) {
+  const r = JSON.parse(jsonStr);
+  const j = r.jenis_kegiatan || r['Jenis Kegiatan'] || '-';
+  const tgl = r.tanggal || r['Tanggal'] || '-';
+  const wkt = (r.waktu || r['Waktu'] || '-').substring(0,5);
+  const cli = r.nama_client || r['Nama Client'] || '-';
+  const cat = r.catatan || r['Catatan'] || '-';
+  const fotoUrl = r.foto || r['URL Foto'] || '';
+  const ts = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '-';
+  const ico = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : '🛡️';
+  const bc = j === 'Pemasangan Baru' ? 'bb' : j === 'Perbaikan' ? 'bp' : 'bm';
+  const bgc = j === 'Pemasangan Baru' ? '#E8F4FF' : j === 'Perbaikan' ? '#FFF8E6' : '#E6FAF5';
+
+  const con = document.getElementById('con');
+  con.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button onclick="goTab('riw', document.getElementById('ni-riw'))"
+        style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--bd);background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">←</button>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">Detail Laporan</div>
+    </div>
+
+    <!-- Hero badge -->
+    <div style="background:linear-gradient(135deg,#0A1628,#1a3a7a);border-radius:18px;padding:22px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden">
+      <div style="font-size:11px;opacity:.6;margin-bottom:4px">Jenis Kegiatan</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;margin-bottom:12px">${ico} ${j}</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="background:rgba(255,255,255,.15);padding:6px 12px;border-radius:50px;font-size:12px">📅 ${tgl}</div>
+        <div style="background:rgba(255,255,255,.15);padding:6px 12px;border-radius:50px;font-size:12px">🕐 ${wkt}</div>
+        <div style="background:rgba(255,255,255,.15);padding:6px 12px;border-radius:50px;font-size:12px">👤 ${currentUser.username}</div>
+      </div>
+    </div>
+
+    <!-- Foto dokumentasi -->
+    ${fotoUrl && fotoUrl !== '-' && fotoUrl !== '' ? `
+    <div class="fcard" style="margin-bottom:12px;padding:14px">
+      <div class="fsec">Foto Dokumentasi</div>
+      <img src="${fotoUrl}" 
+        style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;cursor:pointer"
+        onclick="window.open('${fotoUrl}','_blank')"
+        onerror="this.parentElement.innerHTML='<div style=\'text-align:center;padding:20px;color:var(--t3);font-size:13px\'>Foto tidak dapat dimuat</div>'"
+      />
+      <div style="font-size:11px;color:var(--t3);margin-top:6px;text-align:center">Tap foto untuk buka ukuran penuh</div>
+    </div>
+    ` : `
+    <div class="fcard" style="margin-bottom:12px;padding:14px">
+      <div class="fsec">Foto Dokumentasi</div>
+      <div style="text-align:center;padding:20px;color:var(--t3)">
+        <div style="font-size:32px;margin-bottom:8px">📷</div>
+        <div style="font-size:13px">Tidak ada foto dokumentasi</div>
+      </div>
+    </div>
+    `}
+
+    <!-- Detail info -->
+    <div class="fcard" style="margin-bottom:12px;padding:14px">
+      <div class="fsec">Informasi Kegiatan</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--bd)">
+          <span style="font-size:12px;color:var(--t3)">Teknisi</span>
+          <span style="font-size:13px;font-weight:600">${currentUser.username}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--bd)">
+          <span style="font-size:12px;color:var(--t3)">Tanggal</span>
+          <span style="font-size:13px;font-weight:600">${tgl}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--bd)">
+          <span style="font-size:12px;color:var(--t3)">Waktu</span>
+          <span style="font-size:13px;font-weight:600">${wkt}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--bd)">
+          <span style="font-size:12px;color:var(--t3)">Nama Client</span>
+          <span style="font-size:13px;font-weight:600">${cli !== '-' ? cli : 'Tidak ada'}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-size:12px;color:var(--t3)">Dibuat</span>
+          <span style="font-size:12px;color:var(--t2)">${ts}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Catatan -->
+    <div class="fcard" style="padding:14px">
+      <div class="fsec">Catatan Kegiatan</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.7;white-space:pre-wrap">${cat}</div>
+    </div>
+  `;
 }
 
 // ================= INIT =================

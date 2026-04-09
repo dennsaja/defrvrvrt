@@ -4,8 +4,44 @@ const jwt = require("jsonwebtoken");
 function verifyToken(req) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith("Bearer ")) throw new Error("Unauthorized");
-  const token = auth.split(" ")[1];
-  return jwt.verify(token, process.env.JWT_SECRET || "dev-secret");
+  return jwt.verify(auth.split(" ")[1], process.env.JWT_SECRET || "dev-secret");
+}
+
+async function uploadFotoToStorage(supabase, base64, supabaseUrl) {
+  if (!base64 || !base64.includes(",")) return null;
+  try {
+    const ext = base64.startsWith("data:image/png") ? "png" : "jpg";
+    const fileName = "foto_" + Date.now() + "." + ext;
+    const buffer = Buffer.from(base64.split(",")[1], "base64");
+    const contentType = ext === "png" ? "image/png" : "image/jpeg";
+
+    const { error } = await supabase.storage
+      .from("laporan-foto")
+      .upload(fileName, buffer, { contentType, upsert: false });
+
+    if (error) {
+      console.warn("Storage upload error:", error.message);
+      return null;
+    }
+
+    return supabaseUrl + "/storage/v1/object/public/laporan-foto/" + fileName;
+  } catch (e) {
+    console.warn("Upload foto gagal:", e.message);
+    return null;
+  }
+}
+
+async function kirimKeSheets(gsScriptUrl, payload) {
+  if (!gsScriptUrl || gsScriptUrl.includes("pub?")) return; // skip jika URL CSV bukan Apps Script
+  try {
+    await fetch(gsScriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.warn("Gagal kirim ke Sheets:", e.message);
+  }
 }
 
 module.exports = async function handler(req, res) {
@@ -19,11 +55,10 @@ module.exports = async function handler(req, res) {
     process.env.SUPABASE_SERVICE_KEY
   );
 
-  // GET - ambil semua laporan milik teknisi yang login
+  // ── GET: ambil laporan dari Supabase ──────────────────────────────
   if (req.method === "GET") {
     try {
       const decoded = verifyToken(req);
-
       const { data, error } = await supabase
         .from("laporan")
         .select("*")
@@ -32,13 +67,12 @@ module.exports = async function handler(req, res) {
 
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data || []);
-
     } catch (err) {
       return res.status(401).json({ error: err.message });
     }
   }
 
-  // POST - simpan laporan baru
+  // ── POST: simpan laporan baru ─────────────────────────────────────
   if (req.method === "POST") {
     try {
       const decoded = verifyToken(req);
@@ -48,6 +82,10 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: "Data tidak lengkap" });
       }
 
+      // Upload foto ke Supabase Storage → dapat URL publik
+      const fotoUrl = await uploadFotoToStorage(supabase, foto, process.env.SUPABASE_URL);
+
+      // Simpan ke tabel laporan Supabase
       const { data, error } = await supabase
         .from("laporan")
         .insert([{
@@ -57,38 +95,30 @@ module.exports = async function handler(req, res) {
           waktu,
           nama_client: nama_client || "-",
           catatan,
-          foto: foto || null
+          foto: fotoUrl || null   // simpan URL, bukan base64
         }])
         .select()
         .single();
 
       if (error) {
         console.error("SUPABASE INSERT ERROR:", error);
-        return res.status(500).json({ error: "Gagal simpan: " + error.message });
+        return res.status(500).json({ error: "Gagal simpan ke database: " + error.message });
       }
 
-      // Kirim juga ke Google Sheets jika ada GS_URL
-      if (process.env.GS_URL) {
-        try {
-          await fetch(process.env.GS_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({
-              teknisi: decoded.username,
-              jenis_kegiatan,
-              tanggal,
-              waktu,
-              nama_client: nama_client || "-",
-              catatan,
-              foto_url: foto ? "[foto-" + Date.now() + "]" : "-"
-            })
-          });
-        } catch (gsErr) {
-          console.warn("Gagal kirim ke Sheets:", gsErr.message);
-        }
-      }
+      // Kirim ke Google Sheets via Apps Script (GS_SCRIPT_URL)
+      // Berbeda dengan GS_URL yang hanya untuk baca CSV
+      await kirimKeSheets(process.env.GS_SCRIPT_URL, {
+        teknisi: decoded.username,
+        hp: decoded.phone || "",
+        jenis_kegiatan,
+        tanggal,
+        waktu,
+        nama_client: nama_client || "-",
+        catatan,
+        foto_url: fotoUrl || "-"   // URL foto yang bisa dibuka
+      });
 
-      return res.status(200).json({ success: true, data });
+      return res.status(200).json({ success: true, data, foto_url: fotoUrl });
 
     } catch (err) {
       console.error("LAPORAN POST ERROR:", err);
