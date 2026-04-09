@@ -1,21 +1,45 @@
-import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
+const { createClient } = require("@supabase/supabase-js");
+const bcrypt = require("bcryptjs");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
 
-export default async function handler(req, res) {
-  const { username, phone, password } = req.body;
+module.exports = async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") return res.status(200).end();
 
-  const hashed = await bcrypt.hash(password, 10);
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method tidak diizinkan" });
+  }
 
-  const { error } = await supabase
-    .from('users')
-    .insert([{ username, phone, password: hashed }]);
+  try {
+    const { username, phone, password } = req.body || {};
 
-  if (error) return res.status(500).json({ error: error.message });
+    if (!username || !phone || !password) {
+      return res.status(400).json({ error: "Semua field wajib diisi" });
+    }
 
-  res.json({ success: true });
-}
+    const hashed = await bcrypt.hash(password, 10);
+
+    const { error } = await supabase
+      .from("users")
+      .insert([{ username, phone, password: hashed }]);
+
+    if (error) {
+      if (error.code === "23505") {
+        return res.status(400).json({ error: "Username sudah digunakan" });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.status(200).json({ success: true });
+
+  } catch (err) {
+    console.error("REGISTER ERROR:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};

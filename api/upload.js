@@ -1,38 +1,42 @@
-import { createClient } from '@supabase/supabase-js';
-import jwt from 'jsonwebtoken';
+const { createClient } = require("@supabase/supabase-js");
+const jwt = require("jsonwebtoken");
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
-
-function verify(req) {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) throw new Error('Unauthorized');
-  return jwt.verify(token, process.env.JWT_SECRET);
+function verifyToken(req) {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith("Bearer ")) throw new Error("Unauthorized");
+  return jwt.verify(auth.split(" ")[1], process.env.JWT_SECRET || "dev-secret");
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") return res.status(200).end();
+
   try {
-    verify(req);
+    verifyToken(req);
 
-    const { base64 } = req.body;
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    );
 
-    const fileName = `laporan_${Date.now()}.jpg`;
-    const buffer = Buffer.from(base64.split(',')[1], 'base64');
+    const { base64 } = req.body || {};
+    if (!base64) return res.status(400).json({ error: "base64 diperlukan" });
+
+    const fileName = "laporan_" + Date.now() + ".jpg";
+    const buffer = Buffer.from(base64.split(",")[1], "base64");
 
     const { error } = await supabase.storage
-      .from('laporan')
-      .upload(fileName, buffer, {
-        contentType: 'image/jpeg'
-      });
+      .from("laporan")
+      .upload(fileName, buffer, { contentType: "image/jpeg" });
 
-    if (error) throw error;
+    if (error) return res.status(500).json({ error: error.message });
 
-    const url = `${process.env.SUPABASE_URL}/storage/v1/object/public/laporan/${fileName}`;
+    const url = process.env.SUPABASE_URL + "/storage/v1/object/public/laporan/" + fileName;
+    return res.status(200).json({ url });
 
-    res.json({ url });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
-}
+};

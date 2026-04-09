@@ -664,12 +664,13 @@ async function doLogin() {
       body: JSON.stringify({ username, password })
     });
 
+    // Baca response sekali saja sebagai text, lalu parse
+    const rawText = await res.text();
     let data;
     try {
-      data = await res.json();
+      data = JSON.parse(rawText);
     } catch {
-      const text = await res.text();
-      setAlert('loginAlert', 'Server error: ' + text, 'e');
+      setAlert('loginAlert', 'Server error: ' + rawText, 'e');
       return;
     }
 
