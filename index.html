@@ -32,7 +32,7 @@
   --t:#0A1628;--t2:#4A5568;--t3:#8896A6;
   --bd:rgba(0,102,255,0.12);
   --rad:16px;--rads:10px;
-  --sh:0 4px 24px rgba(0,102,255,0.08);
+  --sh:0 4px 24px rgba(255, 0, 0, 0.08);
 }
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
 .page{display:none;min-height:100vh;flex-direction:column}
@@ -69,10 +69,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .nb-icon{width:34px;height:34px;background:var(--p);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px}
 .nb-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px}
 .nb-r{display:flex;align-items:center;gap:10px}
-.nb-user{display:flex;align-items:center;gap:7px;background:var(--pl);padding:5px 10px 5px 5px;border-radius:50px}
+.nb-user{display:flex;align-items:center;gap:7px;background:#ff4f4f;padding:5px 10px 5px 5px;border-radius:50px}
 .nb-av{width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
 .nb-un{font-size:13px;font-weight:600}
-.btn-out{padding:6px 12px;border:1.5px solid var(--bd);border-radius:7px;background:#fff;font-size:12px;font-weight:600;color:var(--r);cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-out{color:#fff;padding:6px 12px;border:1.5px solid var(--bd);border-radius:7px;background:#fff;font-size:12px;font-weight:600;color:var(--r);cursor:pointer;font-family:inherit;transition:all .2s}
 .btn-out:hover{background:#FFF0F0}
 
 /* BOTTOM NAV */
@@ -88,7 +88,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .con{flex:1;overflow-y:auto;padding:16px;max-width:600px;margin:0 auto;width:100%}
 
 /* CARDS */
-.dh{background:linear-gradient(135deg,#0A1628,#1a3a7a);border-radius:18px;padding:20px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden}
+.dh{background:linear-gradient(135deg,#481414,#f93f3f);border-radius:18px;padding:20px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden}
 .dh::after{content:'📡';position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:56px;opacity:.12}
 .dh-greet{font-size:12px;color:rgba(255,255,255,.7);margin-bottom:3px}
 .dh-name{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;margin-bottom:12px}
@@ -293,7 +293,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <!-- DASHBOARD -->
 <div class="page" id="page-dashboard">
   <div class="nb">
-    <div class="nb-logo"><div class="nb-icon">📡</div><div class="nb-name">TechConnect</div></div>
+    <div class="nb-logo"><div class="nb-icon">📡</div><div class="nb-name">PT. Data Semesta</div></div>
     <div class="nb-r">
       <div class="nb-user"><div class="nb-av" id="navAv">TK</div><div class="nb-un" id="navUn">Teknisi</div></div>
       <button class="btn-out" onclick="doLogout()">Keluar</button>
