@@ -71,7 +71,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .nb-r{display:flex;align-items:center;gap:10px}
 .nb-user{display:flex;align-items:center;gap:7px;background:#ff4f4f;padding:5px 10px 5px 5px;border-radius:50px}
 .nb-av{width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
-.nb-un{font-size:13px;font-weight:600}
+.nb-un{color:#fff;font-size:13px;font-weight:600}
 .btn-out{color:#fff;padding:6px 12px;border:1.5px solid var(--bd);border-radius:7px;background:#fff;font-size:12px;font-weight:600;color:var(--r);cursor:pointer;font-family:inherit;transition:all .2s}
 .btn-out:hover{background:#FFF0F0}
 
@@ -81,7 +81,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .ni.active{color:var(--p)}
 .ni.active::before{content:'';position:absolute;top:0;left:20%;right:20%;height:2.5px;background:var(--p);border-radius:0 0 4px 4px}
 .ni-ico{font-size:20px;line-height:1}
-.ni-lbl{font-size:10px;font-weight:600}
+.ni-lbl{font-size:25px;font-weight:600}
 .ni:not(.active) .ni-lbl{color:var(--t3)}
 
 /* CONTENT */
@@ -262,13 +262,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <!-- LOGIN -->
 <div class="page active" id="page-login">
 <div class="auth-bg"><div class="auth-card">
-  <div class="auth-logo"><div class="logo-box">📡</div><div class="logo-txt">PT. Data Semesta<span>Sistem Live Report Teknisi</span></div></div>
+  <div class="auth-logo"><!--<div class="logo-box">📡</div>--><div class="logo-txt">PT. Data Semesta<span>Sistem Live Report Teknisi</span></div></div>
   <div class="auth-title">Selamat Datang</div>
   <div class="auth-sub">Masuk ke akun teknisi Anda</div>
   <div class="alert" id="loginAlert"></div>
-  <div class="fg"><label class="lbl">Username</label><div class="inp-wrap"><span class="inp-ico">👤</span><input type="text" class="inp" id="loginUser" placeholder="Username" /></div></div>
-  <div class="fg"><label class="lbl">Password</label><div class="inp-wrap"><span class="inp-ico">🔒</span><input type="password" class="inp" id="loginPass" placeholder="Password" /></div></div>
-  <button class="btn-auth" id="loginBtn" onclick="doLogin()">🚀 Masuk</button>
+  <div class="fg"><label class="lbl">Username</label><div class="inp-wrap"><span class="inp-ico"></span><input type="text" class="inp" id="loginUser" placeholder="Username" /></div></div>
+  <div class="fg"><label class="lbl">Password</label><div class="inp-wrap"><span class="inp-ico"></span><input type="password" class="inp" id="loginPass" placeholder="Password" /></div></div>
+  <button class="btn-auth" id="loginBtn" onclick="doLogin()">Masuk</button>
   <div class="sw">Belum punya akun? <a onclick="showPage('register')">Daftar</a></div>
   <!-- <div style="margin-top:12px;text-align:center"><a onclick="document.getElementById('setupModal').classList.add('show')" style="font-size:12px;color:var(--t3);cursor:pointer;">⚙️ Setup koneksi</a></div> -->
 </div></div>
@@ -277,15 +277,15 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <!-- REGISTER -->
 <div class="page" id="page-register">
 <div class="auth-bg"><div class="auth-card">
-  <div class="auth-logo"><div class="logo-box">📡</div><div class="logo-txt">TechConnect<span>Sistem Manajemen Teknisi</span></div></div>
+  <div class="auth-logo"><div class="logo-box">📡</div><div class="logo-txt">PT. Data Semesta<span>Sistem Live Report Teknisi</span></div></div>
   <div class="auth-title">Buat Akun Baru</div>
   <div class="auth-sub">Daftarkan diri sebagai teknisi</div>
   <div class="alert" id="regAlert"></div>
-  <div class="fg"><label class="lbl">Username</label><div class="inp-wrap"><span class="inp-ico">👤</span><input type="text" class="inp" id="rUser" placeholder="Username unik"/></div></div>
-  <div class="fg"><label class="lbl">Nomor HP</label><div class="inp-wrap"><span class="inp-ico">📱</span><input type="tel" class="inp" id="rPhone" placeholder="08xxxxxxxxxx"/></div></div>
-  <div class="fg"><label class="lbl">Password</label><div class="inp-wrap"><span class="inp-ico">🔒</span><input type="password" class="inp" id="rPass" placeholder="Min. 6 karakter"/></div></div>
-  <div class="fg"><label class="lbl">Konfirmasi Password</label><div class="inp-wrap"><span class="inp-ico">🔑</span><input type="password" class="inp" id="rPass2" placeholder="Ulangi password"/></div></div>
-  <button class="btn-auth" id="regBtn" onclick="doRegister()">✅ Daftar Sekarang</button>
+  <div class="fg"><label class="lbl">Username</label><div class="inp-wrap"><span class="inp-ico"></span><input type="text" class="inp" id="rUser" placeholder="Username unik"/></div></div>
+  <div class="fg"><label class="lbl">Nomor HP</label><div class="inp-wrap"><span class="inp-ico"></span><input type="tel" class="inp" id="rPhone" placeholder="08xxxxxxxxxx"/></div></div>
+  <div class="fg"><label class="lbl">Password</label><div class="inp-wrap"><span class="inp-ico"></span><input type="password" class="inp" id="rPass" placeholder="Min. 6 karakter"/></div></div>
+  <div class="fg"><label class="lbl">Konfirmasi Password</label><div class="inp-wrap"><span class="inp-ico"></span><input type="password" class="inp" id="rPass2" placeholder="Ulangi password"/></div></div>
+  <button class="btn-auth" id="regBtn" onclick="doRegister()">Daftar Sekarang</button>
   <div class="sw">Sudah punya akun? <a onclick="showPage('login')">Masuk</a></div>
 </div></div>
 </div>
@@ -301,10 +301,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   </div>
   <div class="con" id="con"></div>
   <div class="bnav">
-    <button class="ni active" id="ni-dash" onclick="goTab('dash',this)"><span class="ni-ico">🏠</span><span class="ni-lbl">Beranda</span></button>
-    <button class="ni" id="ni-lap" onclick="goTab('lap',this)"><span class="ni-ico">📋</span><span class="ni-lbl">Laporan</span></button>
-    <button class="ni" id="ni-riw" onclick="goTab('riw',this)"><span class="ni-ico">📁</span><span class="ni-lbl">Riwayat</span></button>
-    <button class="ni" id="ni-profil" onclick="goTab('profil',this)"><span class="ni-ico">👤</span><span class="ni-lbl">Profil</span></button>
+    <button class="ni active" id="ni-dash" onclick="goTab('dash',this)"><span class="ni-ico"></span><span class="ni-lbl">Beranda</span></button>
+    <button class="ni" id="ni-lap" onclick="goTab('lap',this)"><span class="ni-ico"></span><span class="ni-lbl">Laporan</span></button>
+    <button class="ni" id="ni-riw" onclick="goTab('riw',this)"><span class="ni-ico"></span><span class="ni-lbl">Riwayat</span></button>
+    <button class="ni" id="ni-profil" onclick="goTab('profil',this)"><span class="ni-ico"></span><span class="ni-lbl">Profil</span></button>
   </div>
 </div>
 
