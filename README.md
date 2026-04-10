@@ -1,95 +1,117 @@
-# TechConnect — Bug Fix Summary
+# TechConnect v4 — Sistem Manajemen Teknisi
 
-## Bug yang Ditemukan & Diperbaiki
-
-### 1. `api/login.js` — Variable env salah
-- **Bug**: Pakai `SUPABASE_KEY` yang tidak ada di `.env`
-- **Fix**: Ganti ke `SUPABASE_SERVICE_KEY` (sesuai `.env`)
-
-### 2. `api/login.js` — Token & user tidak dikembalikan ke frontend
-- **Bug**: Response hanya kirim `{ token }`, tanpa data user
-- **Fix**: Kirim `{ token, user: { id, username, phone, created_at } }`
-
-### 3. `index.html` — Login tidak simpan token & user
-- **Bug**: `doLogin()` dapat response tapi tidak simpan ke `localStorage`
-- **Fix**: Tambah `localStorage.setItem('token', ...)` dan `localStorage.setItem('tc_user', ...)`
-
-### 4. `api/laporan.js` — Tidak ada GET handler
-- **Bug**: File hanya handle POST, tidak ada GET → data tidak bisa dibaca
-- **Fix**: Tambah GET handler yang query Supabase dan return data laporan teknisi
-
-### 5. `api/laporan.js` — Pakai `SUPABASE_KEY` (tidak ada) di POST
-- **Bug**: POST handler juga pakai `SUPABASE_KEY` → semua insert gagal
-- **Fix**: Ganti ke `SUPABASE_SERVICE_KEY`
-
-### 6. `api/laporan.js` — Field `teknisi` tidak ada di body
-- **Bug**: `submitLap()` tidak kirim field `teknisi`, tapi server mencari dari body
-- **Fix**: Ambil `teknisi` dari JWT token yang di-decode di server (lebih aman)
-
-### 7. `index.html` — Form laporan tanpa UI yang benar
-- **Bug**: Form pakai raw `<input>` tanpa class, tidak ada preview foto, tombol tidak ada id
-- **Fix**: Gunakan UI komponen yang sudah ada (`.kr`, `.kl`, `.fi`, `.upl`, dll)
-
-### 8. `handleUpl()` — Upload foto tidak update UI
-- **Bug**: Setelah pilih foto, preview tidak muncul karena element belum ada di DOM lama
-- **Fix**: Cari element by id setelah render, update preview dan status text
-
-### 9. Tidak ada `vercel.json`
-- **Bug**: Vercel tidak tahu cara routing `/api/*` ke serverless functions
-- **Fix**: Tambah `vercel.json` dengan konfigurasi routes yang benar
-
-### 10. Tidak ada tabel `laporan` di Supabase
-- **Bug**: Project hanya punya tabel `users`, tidak ada `laporan`
-- **Fix**: Tambah file `supabase_setup.sql` dengan schema lengkap
+## ✨ Fitur Baru v4
+- **Verifikasi Email** — Teknisi baru harus verifikasi email sebelum bisa login
+- **Kirim Ulang Email** — Tombol resend verifikasi jika email belum diterima
+- **Admin Panel** — Login sebagai admin untuk lihat seluruh laporan dari Google Sheets
+- **Bug Fix** — Detail laporan di riwayat sudah diperbaiki
 
 ---
 
-## Cara Deploy
+## 🚀 Setup & Deploy
 
-### Step 1 — Setup Supabase
-1. Buka **Supabase Dashboard** → project kamu
-2. Klik **SQL Editor** di sidebar
-3. Paste isi file `supabase_setup.sql` → klik **Run**
-4. Pastikan tabel `users` dan `laporan` muncul di **Table Editor**
+### 1. Supabase — Jalankan SQL ini di SQL Editor
 
-### Step 2 — Set Environment Variables di Vercel
-1. Buka **Vercel Dashboard** → project → **Settings** → **Environment Variables**
-2. Tambahkan variabel berikut (salin dari file `.env`):
+```sql
+-- Jika tabel users BELUM ADA, buat baru:
+create table if not exists users (
+  id uuid default gen_random_uuid() primary key,
+  username text unique not null,
+  phone text not null,
+  email text unique not null,
+  password text not null,
+  is_verified boolean default false,
+  verify_token text,
+  verify_token_expiry timestamptz,
+  created_at timestamptz default now()
+);
+
+-- Jika tabel users SUDAH ADA (tambah kolom baru):
+alter table users add column if not exists email text unique;
+alter table users add column if not exists is_verified boolean default false;
+alter table users add column if not exists verify_token text;
+alter table users add column if not exists verify_token_expiry timestamptz;
+
+-- Index
+create index if not exists idx_users_email on users(email);
+create index if not exists idx_users_verify_token on users(verify_token);
+```
+
+### 2. Gmail App Password (untuk kirim email verifikasi)
+
+1. Buka https://myaccount.google.com/security
+2. Aktifkan **2-Step Verification**
+3. Buka https://myaccount.google.com/apppasswords
+4. Buat App Password baru → pilih "Mail" & "Other (Custom name)" → tulis "TechConnect"
+5. Copy password 16 karakter yang muncul
+
+### 3. Environment Variables di Vercel
+
+Tambahkan di Vercel Dashboard → Project → Settings → Environment Variables:
 
 | Key | Value |
 |-----|-------|
-| `SUPABASE_URL` | `https://xxxx.supabase.co` |
-| `SUPABASE_SERVICE_KEY` | `eyJ...` (service role key) |
-| `GS_URL` | URL Google Apps Script (untuk Sheets) |
-| `JWT_SECRET` | String rahasia panjang |
+| `SUPABASE_URL` | https://xxxx.supabase.co |
+| `SUPABASE_SERVICE_KEY` | eyJhbGci... |
+| `JWT_SECRET` | random string panjang |
+| `GS_URL` | URL CSV Google Sheets (untuk admin baca data) |
+| `GS_SCRIPT_URL` | URL Apps Script /exec (untuk tulis laporan) |
+| `EMAIL_USER` | emailkamu@gmail.com |
+| `EMAIL_PASS` | App Password 16 karakter |
+| `APP_URL` | https://nama-app.vercel.app |
 
-> ⚠️ Jangan pakai nama `SUPABASE_KEY` — variable itu tidak dipakai di project ini
+### 4. Deploy ke Vercel
 
-### Step 3 — Deploy ulang
-1. Push file-file yang sudah difix ke GitHub
-2. Vercel otomatis redeploy, atau klik **Redeploy** manual
-
-### Step 4 — Test
-1. Buka URL Vercel → Register akun baru
-2. Login → masuk dashboard
-3. Buat laporan → cek di Supabase Table Editor apakah data masuk
-4. Buka tab Riwayat → data harus muncul
+```bash
+npm install -g vercel
+vercel --prod
+```
 
 ---
 
-## Struktur File
+## 🔑 Akun Admin
+
+Login dengan kredensial berikut (hardcoded, tidak perlu di database):
+
+- **Username:** `admin`
+- **Password:** `d3n1s`
+
+Admin akan diarahkan ke halaman **Admin Panel** yang menampilkan seluruh laporan dari Google Sheets.
+
+---
+
+## 📊 Alur Kerja
+
+### Teknisi Baru:
+1. Buka app → klik **Daftar**
+2. Isi username, HP, **email**, password
+3. Klik **Daftar Sekarang**
+4. Cek email → klik link **Verifikasi Akun**
+5. Setelah terverifikasi → bisa login
+
+### Jika Belum Verifikasi:
+- Saat login → muncul alert **"Akun belum terverifikasi"**
+- Klik tombol **"Kirim Ulang Email Verifikasi"**
+- Cek email lagi
+
+---
+
+## 📁 Struktur File
 
 ```
-defrvrvrt-main/
+techconnect-v4/
+├── index.html              ← Frontend (teknisi + admin panel)
 ├── api/
-│   ├── login.js      ← FIXED (env key + return user)
-│   ├── register.js   ← OK (tidak diubah)
-│   ├── laporan.js    ← FIXED (tambah GET + fix env key)
-│   ├── submit.js     ← OK (untuk Sheets)
-│   └── upload.js     ← OK (untuk upload foto ke Storage)
-├── index.html         ← FIXED (login, form, handleUpl)
-├── package.json       ← FIXED (tambah "type": "module")
-├── vercel.json        ← BARU (routing config)
-├── supabase_setup.sql ← BARU (schema database)
-└── .env               ← TIDAK DIUBAH
+│   ├── login.js            ← Auth (teknisi + admin)
+│   ├── register.js         ← Daftar + kirim email verifikasi
+│   ├── verify.js           ← Endpoint klik link dari email
+│   ├── resend-verify.js    ← Kirim ulang email verifikasi
+│   ├── laporan.js          ← GET/POST laporan teknisi
+│   ├── admin.js            ← GET semua laporan (admin only)
+│   ├── upload.js           ← Upload foto ke Supabase Storage
+│   └── submit.js           ← Submit ke Google Sheets
+├── supabase_setup.sql      ← SQL untuk setup database
+├── vercel.json             ← Konfigurasi routing Vercel
+├── package.json            ← Dependencies
+└── .env                    ← Environment variables (jangan di-commit!)
 ```
