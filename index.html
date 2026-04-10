@@ -227,6 +227,34 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .btn-resend{padding:9px 18px;background:#F59E0B;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
 .btn-resend:hover{background:#D97706}
 .btn-resend:disabled{background:#CBD5E0;cursor:not-allowed}
+
+/* ADMIN ACTION BUTTONS */
+.btn-act{width:28px;height:28px;border:none;border-radius:7px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0}
+.btn-view{background:#E8F0FF;color:#0066FF}
+.btn-view:hover{background:#0066FF;color:#fff}
+.btn-edit{background:#FFF8E6;color:#B7791F}
+.btn-edit:hover{background:#F59E0B;color:#fff}
+.btn-del{background:#FFF0F0;color:#C0392B}
+.btn-del:hover{background:var(--r);color:#fff}
+
+/* MODAL INSIDE */
+.modal-sec{font-size:10px;font-weight:700;color:var(--adm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;padding-bottom:5px;border-bottom:1.5px solid var(--adml)}
+.modal-card{background:#F7F9FF;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid var(--bd)}
+.modal-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(0,0,0,.05)}
+.modal-row:last-child{border-bottom:none}
+.modal-lbl{font-size:12px;color:var(--t3)}
+.modal-val{font-size:13px;font-weight:600;color:var(--t);text-align:right;max-width:60%}
+.btn-modal-action{padding:11px 16px;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:all .2s}
+.btn-modal-action:hover{opacity:.88;transform:translateY(-1px)}
+.btn-modal-action:disabled{background:#CBD5E0!important;cursor:not-allowed;transform:none}
+
+/* DOWNLOAD PANEL */
+.btn-dl-range{background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px 10px;cursor:pointer;font-family:inherit;font-size:12px;color:var(--t);transition:all .2s;text-align:center;line-height:1.6}
+.btn-dl-range strong{display:block;font-size:13px;color:var(--adm);margin-bottom:2px}
+.btn-dl-range span{font-size:11px;color:var(--t3)}
+.btn-dl-range:hover{border-color:var(--adm);background:var(--adml);transform:translateY(-2px)}
+.btn-dl-all{width:100%;padding:13px;background:linear-gradient(135deg,var(--adm),#3949ab);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-dl-all:hover{opacity:.9;transform:translateY(-1px)}
 </style>
 </head>
 <body>
@@ -569,48 +597,54 @@ async function renderProfil() {
     </div>`;
 }
 
+
 // ================= ADMIN PANEL =================
+
+// Tampilkan halaman admin dengan loading
 async function renderAdmin() {
   const con = document.getElementById('con-adm');
-  con.innerHTML = `<div class="adm-hdr"><div><div class="adm-hdr-t">📊 Semua Laporan Teknisi</div><div class="adm-hdr-s">Data realtime dari Google Sheets</div></div><button class="adm-refresh" onclick="renderAdmin()"><span class="adm-spin"></span>Refresh</button></div><div class="loading-row"><div class="spin" style="border-top-color:var(--adm)"></div><span>Memuat data dari Sheets...</span></div>`;
+  con.innerHTML = `
+    <div class="adm-hdr">
+      <div><div class="adm-hdr-t">📊 Semua Laporan Teknisi</div><div class="adm-hdr-s">Memuat data dari Google Sheets...</div></div>
+      <button class="adm-refresh" onclick="renderAdmin()"><span class="adm-spin"></span> Refresh</button>
+    </div>
+    <div class="loading-row"><div class="spin" style="border-top-color:var(--adm)"></div><span>Memuat data...</span></div>`;
 
   try {
     const res = await fetch('/api/admin', { headers: { Authorization: 'Bearer ' + token } });
     const result = await res.json();
-
     if (!res.ok) {
-      con.innerHTML = `<div class="adm-hdr"><div><div class="adm-hdr-t">📊 Semua Laporan Teknisi</div><div class="adm-hdr-s" style="color:#ff8a8a">Gagal memuat data</div></div></div><div style="background:#fff;border-radius:14px;padding:24px;text-align:center;color:var(--r)">${result.error || 'Server error'}</div>`;
+      con.innerHTML = `<div class="adm-hdr"><div><div class="adm-hdr-t">📊 Laporan Teknisi</div><div class="adm-hdr-s" style="color:#ff8a8a">Gagal memuat</div></div></div><div style="background:#fff;border-radius:14px;padding:24px;text-align:center;color:var(--r)">${result.error || 'Server error'}</div>`;
       return;
     }
-
     adminData = result.data || [];
     adminFiltered = [...adminData];
-    renderAdminTable(con);
-
+    renderAdminTable();
   } catch (e) {
-    con.innerHTML = `<div style="background:#fff;border-radius:14px;padding:24px;text-align:center;color:var(--r)">❌ Gagal konek ke server: ${e.message}</div>`;
+    con.innerHTML = `<div style="background:#fff;border-radius:14px;padding:24px;text-align:center;color:var(--r)">❌ Gagal konek: ${e.message}</div>`;
   }
 }
 
-function renderAdminTable(con) {
+// Render tabel utama admin
+function renderAdminTable() {
+  const con = document.getElementById('con-adm');
   const data = adminFiltered;
-
-  // Statistik
-  const teknisiSet = new Set(data.map(r => r['Teknisi'] || r.teknisi || ''));
-  const baru = data.filter(r => (r['Jenis Kegiatan']||r.jenis_kegiatan||'') === 'Pemasangan Baru').length;
-  const prb  = data.filter(r => (r['Jenis Kegiatan']||r.jenis_kegiatan||'') === 'Perbaikan').length;
-  const pml  = data.filter(r => (r['Jenis Kegiatan']||r.jenis_kegiatan||'') === 'Pemeliharaan').length;
-
-  // Daftar unik teknisi untuk filter
+  const teknisiSet = new Set(adminData.map(r => r['Teknisi'] || r.teknisi || ''));
   const teknisiList = [...teknisiSet].sort();
+  const baru = adminData.filter(r => (r['Jenis Kegiatan']||'') === 'Pemasangan Baru').length;
+  const prb  = adminData.filter(r => (r['Jenis Kegiatan']||'') === 'Perbaikan').length;
+  const pml  = adminData.filter(r => (r['Jenis Kegiatan']||'') === 'Pemeliharaan').length;
 
   con.innerHTML = `
     <div class="adm-hdr">
       <div>
         <div class="adm-hdr-t">📊 Semua Laporan Teknisi</div>
-        <div class="adm-hdr-s">Total ${adminData.length} laporan dari Google Sheets</div>
+        <div class="adm-hdr-s">${adminData.length} laporan dari Google Sheets · ${data.length} ditampilkan</div>
       </div>
-      <button class="adm-refresh" onclick="renderAdmin()">🔄 Refresh</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="adm-refresh" onclick="renderAdmin()">🔄 Refresh</button>
+        <button class="adm-refresh" onclick="showDownloadPanel()" style="background:rgba(0,196,140,0.25);border-color:rgba(0,196,140,0.5)">📥 Export Excel</button>
+      </div>
     </div>
 
     <div class="adm-stats">
@@ -633,61 +667,440 @@ function renderAdminTable(con) {
         <option value="">Semua Teknisi</option>
         ${teknisiList.map(t => `<option value="${t}">${t}</option>`).join('')}
       </select>
-      <span style="font-size:12px;color:var(--t3);white-space:nowrap">${data.length} hasil</span>
+      <span style="font-size:12px;color:var(--t3);white-space:nowrap;padding:0 4px">${data.length} hasil</span>
     </div>
 
     <div class="tbl-wrap">
-      ${data.length === 0 ? `<div class="adm-empty"><div style="font-size:40px;margin-bottom:12px">📭</div><div style="font-weight:600;color:var(--t2)">Tidak ada data</div></div>` : `
-      <div style="overflow-x:auto">
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>No</th>
-            <th>Timestamp</th>
-            <th>Teknisi</th>
-            <th>No HP</th>
-            <th>Jenis</th>
-            <th>Tanggal</th>
-            <th>Waktu</th>
-            <th>Client</th>
-            <th>Catatan</th>
-            <th>Foto</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${data.map((r, i) => {
-            const j   = r['Jenis Kegiatan'] || r.jenis_kegiatan || '-';
-            const tgl = r['Tanggal'] || r.tanggal || '-';
-            const wkt = (r['Waktu'] || r.waktu || '-').substring(0, 5);
-            const cli = r['Nama Client'] || r.nama_client || '-';
-            const cat = r['Catatan'] || r.catatan || '-';
-            const tek = r['Teknisi'] || r.teknisi || '-';
-            const hp  = r['No HP'] || r.phone || '-';
-            const ts  = r['Timestamp'] || r.created_at || '-';
-            const foto = r['URL Foto'] || r.foto || '';
-            const bc  = j === 'Pemasangan Baru' ? 'background:#E8F4FF;color:#0066FF' : j === 'Perbaikan' ? 'background:#FFF8E6;color:#B7791F' : 'background:#E6FAF5;color:#00856E';
-            const ico = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : '🛡️';
-            return `<tr>
-              <td style="color:var(--t3);font-size:11px">${i+1}</td>
-              <td style="font-size:11px;color:var(--t3);white-space:nowrap">${ts}</td>
-              <td><strong>${tek}</strong></td>
-              <td style="font-size:12px">${hp}</td>
-              <td><span class="adm-badge" style="${bc}">${ico} ${j}</span></td>
-              <td style="white-space:nowrap">${tgl}</td>
-              <td style="white-space:nowrap">${wkt}</td>
-              <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${cli}">${cli}</td>
-              <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--t2)" title="${cat}">${cat}</td>
-              <td>${foto && foto !== '-' && foto.startsWith('http') ? `<img class="tbl-foto" src="${foto}" onclick="window.open('${foto}','_blank')" title="Klik untuk buka foto" onerror="this.style.display='none'">` : '<span style="font-size:11px;color:var(--t3)">—</span>'}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-      </div>`}
+      ${data.length === 0
+        ? `<div class="adm-empty"><div style="font-size:40px;margin-bottom:12px">📭</div><div style="font-weight:600;color:var(--t2)">Tidak ada data</div></div>`
+        : `<div style="overflow-x:auto">
+           <table class="tbl">
+             <thead>
+               <tr>
+                 <th style="width:36px">No</th>
+                 <th>Timestamp</th>
+                 <th>Teknisi</th>
+                 <th>No HP</th>
+                 <th>Jenis</th>
+                 <th>Tanggal</th>
+                 <th>Waktu</th>
+                 <th>Client</th>
+                 <th>Catatan</th>
+                 <th>Foto</th>
+                 <th style="width:90px">Aksi</th>
+               </tr>
+             </thead>
+             <tbody>
+               ${data.map((r, i) => buildAdminRow(r, i)).join('')}
+             </tbody>
+           </table>
+           </div>`
+      }
     </div>`;
 }
 
+// Build satu baris tabel admin
+function buildAdminRow(r, i) {
+  const j    = r['Jenis Kegiatan'] || r.jenis_kegiatan || '-';
+  const tgl  = r['Tanggal'] || r.tanggal || '-';
+  const wkt  = (r['Waktu'] || r.waktu || '-').substring(0, 5);
+  const cli  = r['Nama Client'] || r.nama_client || '-';
+  const cat  = r['Catatan'] || r.catatan || '-';
+  const tek  = r['Teknisi'] || r.teknisi || '-';
+  const hp   = r['No HP'] || r.phone || '-';
+  const ts   = r['Timestamp'] || r.created_at || '-';
+  const foto = r['URL Foto'] || r.foto || '';
+  const bc   = j === 'Pemasangan Baru' ? 'background:#E8F4FF;color:#0066FF' : j === 'Perbaikan' ? 'background:#FFF8E6;color:#B7791F' : 'background:#E6FAF5;color:#00856E';
+  const ico  = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : '🛡️';
+  const idx  = adminFiltered.indexOf(r); // index dalam filtered array
+  return `<tr id="arow-${idx}">
+    <td style="color:var(--t3);font-size:11px">${i+1}</td>
+    <td style="font-size:11px;color:var(--t3);white-space:nowrap">${ts}</td>
+    <td style="cursor:pointer;color:var(--adm);font-weight:700" onclick="showAdminDetail(${idx})" title="Lihat detail">${tek}</td>
+    <td style="font-size:12px">${hp}</td>
+    <td><span class="adm-badge" style="${bc}">${ico} ${j}</span></td>
+    <td style="white-space:nowrap">${tgl}</td>
+    <td style="white-space:nowrap">${wkt}</td>
+    <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${cli}">${cli}</td>
+    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--t2)" title="${cat}">${cat}</td>
+    <td>${foto && foto !== '-' && foto.startsWith('http')
+      ? `<img class="tbl-foto" src="${foto}" onclick="window.open('${foto}','_blank')" title="Klik buka foto" onerror="this.style.display='none'">`
+      : '<span style="font-size:11px;color:var(--t3)">—</span>'}</td>
+    <td>
+      <div style="display:flex;gap:4px">
+        <button onclick="showAdminDetail(${idx})" class="btn-act btn-view" title="Lihat Detail">👁️</button>
+        <button onclick="showEditModal(${idx})" class="btn-act btn-edit" title="Edit">✏️</button>
+        <button onclick="confirmDelete(${idx})" class="btn-act btn-del" title="Hapus">🗑️</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+// ── DETAIL MODAL ─────────────────────────────────────────────────────
+function showAdminDetail(idx) {
+  const r    = adminFiltered[idx];
+  if (!r) return;
+  const j    = r['Jenis Kegiatan'] || '-';
+  const tgl  = r['Tanggal'] || '-';
+  const wkt  = (r['Waktu'] || '-').substring(0, 5);
+  const cli  = r['Nama Client'] || '-';
+  const cat  = r['Catatan'] || '-';
+  const tek  = r['Teknisi'] || '-';
+  const hp   = r['No HP'] || '-';
+  const ts   = r['Timestamp'] || '-';
+  const foto = r['URL Foto'] || r.foto || '';
+  const ico  = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : '🛡️';
+  const grad = j === 'Pemasangan Baru' ? 'linear-gradient(135deg,#0a2463,#0066FF)' : j === 'Perbaikan' ? 'linear-gradient(135deg,#5c3a00,#F59E0B)' : 'linear-gradient(135deg,#003d2e,#00C48C)';
+
+  openModal(`
+    <div style="background:${grad};border-radius:14px;padding:20px;color:#fff;margin-bottom:16px">
+      <div style="font-size:11px;opacity:.7;margin-bottom:4px">Detail Laporan</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;margin-bottom:10px">${ico} ${j}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">📅 ${tgl}</span>
+        <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">🕐 ${wkt}</span>
+        <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">👤 ${tek}</span>
+        <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">📱 ${hp}</span>
+      </div>
+    </div>
+
+    ${foto && foto.startsWith('http') ? `
+    <div style="margin-bottom:14px">
+      <div class="modal-sec">📷 Foto Dokumentasi</div>
+      <img src="${foto}" onclick="window.open('${foto}','_blank')"
+        style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;cursor:pointer"
+        onerror="this.parentElement.style.display='none'">
+      <div style="font-size:11px;color:var(--t3);text-align:center;margin-top:5px">Tap untuk buka penuh</div>
+    </div>` : ''}
+
+    <div class="modal-card">
+      <div class="modal-sec">📋 Informasi Kegiatan</div>
+      <div class="modal-row"><span class="modal-lbl">Timestamp</span><span class="modal-val">${ts}</span></div>
+      <div class="modal-row"><span class="modal-lbl">Teknisi</span><span class="modal-val">${tek}</span></div>
+      <div class="modal-row"><span class="modal-lbl">No HP</span><span class="modal-val">${hp}</span></div>
+      <div class="modal-row"><span class="modal-lbl">Tanggal</span><span class="modal-val">${tgl}</span></div>
+      <div class="modal-row"><span class="modal-lbl">Waktu</span><span class="modal-val">${wkt}</span></div>
+      <div class="modal-row"><span class="modal-lbl">Nama Client</span><span class="modal-val">${cli !== '-' ? cli : '—'}</span></div>
+    </div>
+    <div class="modal-card">
+      <div class="modal-sec">📝 Catatan Kegiatan</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.7;white-space:pre-wrap">${cat}</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button onclick="closeModal();showEditModal(${idx})" class="btn-modal-action" style="background:var(--adm);flex:1">✏️ Edit</button>
+      <button onclick="closeModal();confirmDelete(${idx})" class="btn-modal-action" style="background:var(--r);flex:1">🗑️ Hapus</button>
+    </div>
+  `);
+}
+
+// ── EDIT MODAL ────────────────────────────────────────────────────────
+function showEditModal(idx) {
+  const r   = adminFiltered[idx];
+  if (!r) return;
+  const j   = r['Jenis Kegiatan'] || '';
+  const tgl = r['Tanggal'] || '';
+  const wkt = (r['Waktu'] || '').substring(0, 5);
+  const cli = r['Nama Client'] || '';
+  const cat = r['Catatan'] || '';
+
+  openModal(`
+    <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px">✏️ Edit Laporan</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">Teknisi: <strong>${r['Teknisi']||'-'}</strong> · Baris ${r._rowIndex||'?'}</div>
+
+    <div class="modal-sec">Jenis Kegiatan</div>
+    <select id="editJenis" class="fi" style="margin-bottom:12px">
+      <option value="Pemasangan Baru" ${j==='Pemasangan Baru'?'selected':''}>📶 Pemasangan Baru</option>
+      <option value="Perbaikan"       ${j==='Perbaikan'?'selected':''}>🔧 Perbaikan</option>
+      <option value="Pemeliharaan"    ${j==='Pemeliharaan'?'selected':''}>🛡️ Pemeliharaan</option>
+    </select>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <div class="modal-sec">Tanggal</div>
+        <input type="date" id="editTgl" class="fi" value="${tgl}">
+      </div>
+      <div>
+        <div class="modal-sec">Waktu</div>
+        <input type="time" id="editWkt" class="fi" value="${wkt}">
+      </div>
+    </div>
+
+    <div class="modal-sec">Nama Client</div>
+    <input type="text" id="editCli" class="fi" value="${cli === '-' ? '' : cli}" placeholder="Nama client (opsional)" style="margin-bottom:12px">
+
+    <div class="modal-sec">Catatan Kegiatan <span style="color:var(--r)">*</span></div>
+    <textarea id="editCat" class="fi" rows="4" style="resize:vertical;margin-bottom:16px">${cat}</textarea>
+
+    <div style="display:flex;gap:8px">
+      <button onclick="closeModal()" class="btn-modal-action" style="background:#E2E8F0;color:var(--t);flex:1">Batal</button>
+      <button onclick="doEditLaporan(${idx})" class="btn-modal-action" id="btnEditSave" style="background:var(--adm);flex:2">💾 Simpan Perubahan</button>
+    </div>
+  `);
+}
+
+async function doEditLaporan(idx) {
+  const r   = adminFiltered[idx];
+  if (!r) return;
+  const btn = document.getElementById('btnEditSave');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Menyimpan...'; }
+
+  const jenis  = document.getElementById('editJenis')?.value;
+  const tgl    = document.getElementById('editTgl')?.value;
+  const wkt    = document.getElementById('editWkt')?.value;
+  const cli    = document.getElementById('editCli')?.value?.trim() || '-';
+  const cat    = document.getElementById('editCat')?.value?.trim();
+
+  if (!jenis || !tgl || !wkt || !cat) { toast('Isi semua field!','err'); if(btn){btn.disabled=false;btn.textContent='💾 Simpan Perubahan';} return; }
+
+  try {
+    const res = await fetch('/api/admin', {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+      body: JSON.stringify({
+        rowIndex: r._rowIndex,
+        data: { ...r, 'Jenis Kegiatan': jenis, 'Tanggal': tgl, 'Waktu': wkt, 'Nama Client': cli, 'Catatan': cat }
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error||'Gagal edit','err'); return; }
+
+    // Update lokal
+    r['Jenis Kegiatan'] = jenis; r['Tanggal'] = tgl;
+    r['Waktu'] = wkt; r['Nama Client'] = cli; r['Catatan'] = cat;
+    // Sync ke adminData juga
+    const origIdx = adminData.indexOf(r);
+    if (origIdx >= 0) adminData[origIdx] = r;
+
+    closeModal();
+    toast('✅ Laporan berhasil diubah!','ok');
+    renderAdminTable();
+  } catch(e) {
+    toast('Gagal konek server','err');
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='💾 Simpan Perubahan';}
+  }
+}
+
+// ── DELETE CONFIRM ────────────────────────────────────────────────────
+function confirmDelete(idx) {
+  const r = adminFiltered[idx];
+  if (!r) return;
+  const tek = r['Teknisi'] || '-';
+  const tgl = r['Tanggal'] || '-';
+  const j   = r['Jenis Kegiatan'] || '-';
+
+  openModal(`
+    <div style="text-align:center;padding:8px 0">
+      <div style="font-size:48px;margin-bottom:12px">🗑️</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin-bottom:8px;color:var(--t)">Hapus Laporan?</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:8px">
+        Kamu akan menghapus laporan milik <strong>${tek}</strong><br>
+        <strong>${j}</strong> tanggal <strong>${tgl}</strong>
+      </div>
+      <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:10px;padding:10px;font-size:12px;color:var(--r);margin-bottom:20px">
+        ⚠️ Data akan dihapus permanen dari Google Sheets. Tindakan ini tidak bisa dibatalkan.
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="closeModal()" class="btn-modal-action" style="background:#E2E8F0;color:var(--t);flex:1">Batal</button>
+        <button onclick="doDeleteLaporan(${idx})" id="btnDelConfirm" class="btn-modal-action" style="background:var(--r);flex:1">🗑️ Ya, Hapus</button>
+      </div>
+    </div>
+  `);
+}
+
+async function doDeleteLaporan(idx) {
+  const r   = adminFiltered[idx];
+  if (!r) return;
+  const btn = document.getElementById('btnDelConfirm');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Menghapus...'; }
+
+  try {
+    const res = await fetch('/api/admin', {
+      method: 'DELETE',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+      body: JSON.stringify({ rowIndex: r._rowIndex, id: r.id || null })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error||'Gagal hapus','err'); return; }
+
+    // Hapus dari array lokal
+    const aiIdx = adminData.indexOf(r);
+    if (aiIdx >= 0) adminData.splice(aiIdx, 1);
+    filterAdmin(); // re-filter dan re-render
+    closeModal();
+    toast('✅ Laporan berhasil dihapus!','ok');
+  } catch(e) {
+    toast('Gagal konek server','err');
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='🗑️ Ya, Hapus';}
+  }
+}
+
+// ── DOWNLOAD EXCEL ────────────────────────────────────────────────────
+function showDownloadPanel() {
+  openModal(`
+    <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px">📥 Export Laporan ke Excel</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:20px">Pilih rentang waktu untuk data yang akan diexport</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <button onclick="downloadExcel('today')"   class="btn-dl-range">📅<br><strong>Hari Ini</strong><br><span>${new Date().toLocaleDateString('id-ID')}</span></button>
+      <button onclick="downloadExcel('week')"    class="btn-dl-range">📅<br><strong>7 Hari Terakhir</strong><br><span>1 Minggu</span></button>
+      <button onclick="downloadExcel('month')"   class="btn-dl-range">📅<br><strong>30 Hari Terakhir</strong><br><span>1 Bulan</span></button>
+      <button onclick="downloadExcel('year')"    class="btn-dl-range">📅<br><strong>365 Hari Terakhir</strong><br><span>1 Tahun</span></button>
+    </div>
+    <button onclick="downloadExcel('all')" class="btn-dl-all">📊 Download Semua Data (${adminData.length} laporan)</button>
+
+    <div style="margin-top:14px">
+      <div class="modal-sec">Atau pilih rentang kustom</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+        <div>
+          <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:4px">Dari tanggal</label>
+          <input type="date" id="dlFrom" class="fi">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--t3);display:block;margin-bottom:4px">Sampai tanggal</label>
+          <input type="date" id="dlTo" class="fi" value="${new Date().toISOString().split('T')[0]}">
+        </div>
+      </div>
+      <button onclick="downloadExcel('custom')" class="btn-modal-action" style="width:100%;margin-top:10px;background:var(--adm)">📥 Download Rentang Kustom</button>
+    </div>
+    <button onclick="closeModal()" style="width:100%;padding:10px;border:none;background:none;color:var(--t3);font-family:inherit;font-size:13px;cursor:pointer;margin-top:8px">Tutup</button>
+  `);
+}
+
+function downloadExcel(range) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let filtered = [];
+
+  if (range === 'all') {
+    filtered = [...adminData];
+  } else if (range === 'today') {
+    filtered = adminData.filter(r => {
+      const d = parseRowDate(r);
+      return d && d >= today && d < new Date(today.getTime() + 86400000);
+    });
+  } else if (range === 'week') {
+    const from = new Date(today.getTime() - 6 * 86400000);
+    filtered = adminData.filter(r => { const d = parseRowDate(r); return d && d >= from; });
+  } else if (range === 'month') {
+    const from = new Date(today.getTime() - 29 * 86400000);
+    filtered = adminData.filter(r => { const d = parseRowDate(r); return d && d >= from; });
+  } else if (range === 'year') {
+    const from = new Date(today.getTime() - 364 * 86400000);
+    filtered = adminData.filter(r => { const d = parseRowDate(r); return d && d >= from; });
+  } else if (range === 'custom') {
+    const from = document.getElementById('dlFrom')?.value;
+    const to   = document.getElementById('dlTo')?.value;
+    if (!from || !to) { toast('Pilih tanggal dari dan sampai!','err'); return; }
+    const fromD = new Date(from); fromD.setHours(0,0,0,0);
+    const toD   = new Date(to);   toD.setHours(23,59,59,999);
+    filtered = adminData.filter(r => { const d = parseRowDate(r); return d && d >= fromD && d <= toD; });
+  }
+
+  if (filtered.length === 0) { toast('Tidak ada data di rentang waktu ini','err'); return; }
+
+  const labels = {
+    'today': 'Hari_Ini', 'week': '7_Hari', 'month': '30_Hari',
+    'year': '1_Tahun', 'all': 'Semua', 'custom': 'Kustom'
+  };
+  generateExcel(filtered, `Laporan_TechConnect_${labels[range]}_${today.toISOString().split('T')[0]}.xlsx`);
+  toast(`✅ Mengunduh ${filtered.length} laporan...`, 'ok');
+  closeModal();
+}
+
+function parseRowDate(r) {
+  // Coba dari kolom Tanggal (format YYYY-MM-DD)
+  const tgl = r['Tanggal'] || r.tanggal || '';
+  if (tgl && /\d{4}-\d{2}-\d{2}/.test(tgl)) return new Date(tgl);
+  // Fallback dari Timestamp (format DD/MM/YYYY atau lainnya)
+  const ts = r['Timestamp'] || r.created_at || '';
+  if (ts) {
+    const d = new Date(ts);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+// Generate file .xlsx menggunakan format SpreadsheetML (tidak perlu library eksternal)
+function generateExcel(data, filename) {
+  const headers = ['No', 'Timestamp', 'Teknisi', 'No HP', 'Jenis Kegiatan', 'Tanggal', 'Waktu', 'Nama Client', 'Catatan', 'URL Foto'];
+
+  // Build XML rows
+  const esc = v => String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  const headerRow = headers.map(h => `<Cell ss:StyleID="hdr"><Data ss:Type="String">${esc(h)}</Data></Cell>`).join('');
+
+  const dataRows = data.map((r, i) => {
+    const row = [
+      i + 1,
+      r['Timestamp'] || r.created_at || '',
+      r['Teknisi'] || r.teknisi || '',
+      r['No HP'] || r.phone || '',
+      r['Jenis Kegiatan'] || r.jenis_kegiatan || '',
+      r['Tanggal'] || r.tanggal || '',
+      (r['Waktu'] || r.waktu || '').substring(0, 5),
+      r['Nama Client'] || r.nama_client || '',
+      r['Catatan'] || r.catatan || '',
+      r['URL Foto'] || r.foto || '',
+    ];
+    return '<Row>' + row.map((v, ci) => {
+      const type = ci === 0 ? 'Number' : 'String';
+      return `<Cell${ci === 9 && v && v.startsWith('http') ? ` ss:HRef="${esc(v)}"` : ''}><Data ss:Type="${type}">${esc(v)}</Data></Cell>`;
+    }).join('') + '</Row>';
+  }).join('\n');
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:x="urn:schemas-microsoft-com:office:excel">
+ <Styles>
+  <Style ss:ID="hdr">
+   <Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="11"/>
+   <Interior ss:Color="#1A237E" ss:Pattern="Solid"/>
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#FFFFFF"/></Borders>
+  </Style>
+  <Style ss:ID="def">
+   <Alignment ss:Vertical="Center" ss:WrapText="1"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="Laporan TechConnect">
+  <Table ss:DefaultRowHeight="20" ss:DefaultColumnWidth="100"
+    ss:ExpandedColumnCount="${headers.length}" ss:ExpandedRowCount="${data.length + 1}">
+   <Column ss:Width="30"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="80"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="80"/>
+   <Column ss:Width="50"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="220"/>
+   <Column ss:Width="180"/>
+   <Row ss:Height="24">${headerRow}</Row>
+   ${dataRows}
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <FreezePanes/><FrozenNoSplit/>
+   <SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>`;
+
+  const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── FILTER ────────────────────────────────────────────────────────────
 function filterAdmin() {
-  const q     = (document.getElementById('admSearch')?.value || '').toLowerCase();
+  const q    = (document.getElementById('admSearch')?.value || '').toLowerCase();
   const jenis = document.getElementById('admFilterJenis')?.value || '';
   const tek   = document.getElementById('admFilterTeknisi')?.value || '';
 
@@ -696,14 +1109,34 @@ function filterAdmin() {
     const t  = r['Teknisi'] || r.teknisi || '';
     const cl = r['Nama Client'] || r.nama_client || '';
     const ca = r['Catatan'] || r.catatan || '';
-    const matchQ   = !q || [t, cl, ca, j].some(v => v.toLowerCase().includes(q));
+    const hp = r['No HP'] || r.phone || '';
+    const matchQ   = !q || [t, cl, ca, j, hp].some(v => v.toLowerCase().includes(q));
     const matchJ   = !jenis || j === jenis;
     const matchTek = !tek || t === tek;
     return matchQ && matchJ && matchTek;
   });
-
-  renderAdminTable(document.getElementById('con-adm'));
+  renderAdminTable();
 }
+
+// ── MODAL HELPER ──────────────────────────────────────────────────────
+function openModal(html) {
+  let mo = document.getElementById('adminModal');
+  if (!mo) {
+    mo = document.createElement('div');
+    mo.id = 'adminModal';
+    mo.className = 'mo';
+    mo.innerHTML = '<div class="mbox" id="adminModalBox" style="max-width:520px"></div>';
+    mo.addEventListener('click', e => { if (e.target === mo) closeModal(); });
+    document.body.appendChild(mo);
+  }
+  document.getElementById('adminModalBox').innerHTML = html;
+  mo.classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('adminModal')?.classList.remove('show');
+}
+
 
 // ================= AUTH =================
 async function doLogin() {
