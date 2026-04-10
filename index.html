@@ -1332,12 +1332,21 @@ function setAlert(id, msg, type) {
   el.className = 'alert ' + cls;
   el.innerHTML = msg;
 }
-function toast(msg, type='') {
-  const t = document.getElementById('toast');
+function toast(msg, type = '') {
+  // Selalu pakai elemen yang sama di luar #con-adm
+  let t = document.getElementById('toast');
   if (!t) return;
+  // Reset dulu — batalkan timer sebelumnya
+  if (t._toastTimer) clearTimeout(t._toastTimer);
+  t.className = 'toast'; // reset tanpa show dulu
   t.textContent = msg;
-  t.className = 'toast'+(type?' '+type:'')+' show';
-  setTimeout(()=>t.classList.remove('show'), 3000);
+  // Force reflow agar animasi restart dari awal
+  void t.offsetWidth;
+  t.className = 'toast' + (type ? ' ' + type : '') + ' show';
+  t._toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+    t._toastTimer = null;
+  }, 3000);
 }
 function showLoading(txt='Memproses...') {
   const el = document.getElementById('ltxt'); if (el) el.textContent = txt;
