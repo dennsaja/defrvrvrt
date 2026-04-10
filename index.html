@@ -5,6 +5,7 @@
 <title>App - PT. Data Semesta</title>
 <meta name="description" content="Sistem Laporan Teknisi Terpadu.">
 <link href="https://framerusercontent.com/images/BiUYrTKz4r6c9JXEtTFAo0K6QM.png" rel="icon">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -1004,7 +1005,7 @@ function downloadExcel(range) {
     'today': 'Hari_Ini', 'week': '7_Hari', 'month': '30_Hari',
     'year': '1_Tahun', 'all': 'Semua', 'custom': 'Kustom'
   };
-  generateExcel(filtered, `Laporan_TechConnect_${labels[range]}_${today.toISOString().split('T')[0]}.xlsx`);
+  generateExcel(filtered, `Laporan_DataSemestaApp_${labels[range]}_${today.toISOString().split('T')[0]}.xlsx`);
   toast(`✅ Mengunduh ${filtered.length} laporan...`, 'ok');
   closeModal();
 }
@@ -1022,80 +1023,47 @@ function parseRowDate(r) {
   return null;
 }
 
-// Generate file .xlsx menggunakan format SpreadsheetML (tidak perlu library eksternal)
+// Generate file .xlsx menggunakan SheetJS (binary xlsx asli)
 function generateExcel(data, filename) {
-  const headers = ['No', 'Timestamp', 'Teknisi', 'No HP', 'Jenis Kegiatan', 'Tanggal', 'Waktu', 'Nama Client', 'Catatan', 'URL Foto'];
+  const rows = data.map((r, i) => ({
+    'No':             i + 1,
+    'Timestamp':      r['Timestamp']     || r.created_at     || '',
+    'Teknisi':        r['Teknisi']       || r.teknisi        || '',
+    'No HP':          r['No HP']         || r.phone          || '',
+    'Jenis Kegiatan': r['Jenis Kegiatan']|| r.jenis_kegiatan || '',
+    'Tanggal':        r['Tanggal']       || r.tanggal        || '',
+    'Waktu':          (r['Waktu']        || r.waktu          || '').substring(0, 5),
+    'Nama Client':    r['Nama Client']   || r.nama_client    || '',
+    'Catatan':        r['Catatan']       || r.catatan        || '',
+    'URL Foto':       r['URL Foto']      || r.foto           || '',
+  }));
 
-  // Build XML rows
-  const esc = v => String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const ws = XLSX.utils.json_to_sheet(rows);
 
-  const headerRow = headers.map(h => `<Cell ss:StyleID="hdr"><Data ss:Type="String">${esc(h)}</Data></Cell>`).join('');
+  // Lebar kolom
+  ws['!cols'] = [
+    {wch:5},{wch:20},{wch:14},{wch:14},{wch:16},
+    {wch:12},{wch:8},{wch:16},{wch:36},{wch:40}
+  ];
 
-  const dataRows = data.map((r, i) => {
-    const row = [
-      i + 1,
-      r['Timestamp'] || r.created_at || '',
-      r['Teknisi'] || r.teknisi || '',
-      r['No HP'] || r.phone || '',
-      r['Jenis Kegiatan'] || r.jenis_kegiatan || '',
-      r['Tanggal'] || r.tanggal || '',
-      (r['Waktu'] || r.waktu || '').substring(0, 5),
-      r['Nama Client'] || r.nama_client || '',
-      r['Catatan'] || r.catatan || '',
-      r['URL Foto'] || r.foto || '',
-    ];
-    return '<Row>' + row.map((v, ci) => {
-      const type = ci === 0 ? 'Number' : 'String';
-      return `<Cell${ci === 9 && v && v.startsWith('http') ? ` ss:HRef="${esc(v)}"` : ''}><Data ss:Type="${type}">${esc(v)}</Data></Cell>`;
-    }).join('') + '</Row>';
-  }).join('\n');
+  // Freeze baris pertama (header)
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:x="urn:schemas-microsoft-com:office:excel">
- <Styles>
-  <Style ss:ID="hdr">
-   <Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="11"/>
-   <Interior ss:Color="#1A237E" ss:Pattern="Solid"/>
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-   <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#FFFFFF"/></Borders>
-  </Style>
-  <Style ss:ID="def">
-   <Alignment ss:Vertical="Center" ss:WrapText="1"/>
-  </Style>
- </Styles>
- <Worksheet ss:Name="Laporan TechConnect">
-  <Table ss:DefaultRowHeight="20" ss:DefaultColumnWidth="100"
-    ss:ExpandedColumnCount="${headers.length}" ss:ExpandedRowCount="${data.length + 1}">
-   <Column ss:Width="30"/>
-   <Column ss:Width="130"/>
-   <Column ss:Width="80"/>
-   <Column ss:Width="100"/>
-   <Column ss:Width="110"/>
-   <Column ss:Width="80"/>
-   <Column ss:Width="50"/>
-   <Column ss:Width="110"/>
-   <Column ss:Width="220"/>
-   <Column ss:Width="180"/>
-   <Row ss:Height="24">${headerRow}</Row>
-   ${dataRows}
-  </Table>
-  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
-   <FreezePanes/><FrozenNoSplit/>
-   <SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane>
-  </WorksheetOptions>
- </Worksheet>
-</Workbook>`;
+  // Style header — warna biru gelap, teks putih bold
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let C = range.s.c; C <= range.e.c; C++) {
+    const cell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
+    if (!cell) continue;
+    cell.s = {
+      fill: { fgColor: { rgb: '1A237E' } },
+      font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+      alignment: { horizontal: 'center', vertical: 'center' },
+    };
+  }
 
-  const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Laporan TechConnect');
+  XLSX.writeFile(wb, filename);
 }
 
 // ── FILTER ────────────────────────────────────────────────────────────
