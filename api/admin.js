@@ -79,30 +79,35 @@ module.exports = async function handler(req, res) {
   // ── PUT: edit di Sheets + Supabase ────────────────────────────────
   if (req.method === "PUT") {
     try {
-      const { rowIndex, data: rowData } = req.body || {};
+      const { rowIndex, supabaseId, data: rowData } = req.body || {};
       if (!rowIndex) return res.status(400).json({ error: "rowIndex wajib diisi" });
 
       // Update di Google Sheets
       const result = await sendToAppsScript("edit", { rowIndex, data: rowData });
 
-      // Sync ke Supabase — cari by teknisi+tanggal+waktu karena sheets tidak punya id
+      // Sync ke Supabase — utamakan id langsung, fallback ke teknisi+tanggal+waktu
       try {
-        const teknisi = rowData["Teknisi"] || rowData.teknisi;
-        const tanggal = rowData["Tanggal"] || rowData.tanggal;
-        const waktu   = (rowData["Waktu"] || rowData.waktu || "").substring(0, 5);
+        const updatePayload = {
+          jenis_kegiatan: rowData["Jenis Kegiatan"] || rowData.jenis_kegiatan,
+          nama_client:    rowData["Nama Client"]    || rowData.nama_client,
+          tempat:         rowData["Tempat"]         || rowData.tempat,
+          estimasi:       rowData["Estimasi"]       || rowData.estimasi,
+          catatan:        rowData["Catatan"]        || rowData.catatan,
+        };
 
-        const { data: existing } = await supabase.from("laporan")
-          .select("id").eq("teknisi", teknisi).eq("tanggal", tanggal)
-          .ilike("waktu", waktu + "%").limit(1);
-
-        if (existing && existing.length > 0) {
-          await supabase.from("laporan").update({
-            jenis_kegiatan: rowData["Jenis Kegiatan"] || rowData.jenis_kegiatan,
-            nama_client:    rowData["Nama Client"]    || rowData.nama_client,
-            tempat:         rowData["Tempat"]         || rowData.tempat,
-            estimasi:       rowData["Estimasi"]       || rowData.estimasi,
-            catatan:        rowData["Catatan"]        || rowData.catatan,
-          }).eq("id", existing[0].id);
+        if (supabaseId) {
+          // Update langsung by primary key — paling akurat
+          await supabase.from("laporan").update(updatePayload).eq("id", supabaseId);
+        } else {
+          // Fallback: cari by teknisi+tanggal+waktu
+          const teknisi = rowData["Teknisi"] || rowData.teknisi;
+          const tanggal = rowData["Tanggal"] || rowData.tanggal;
+          const waktu   = (rowData["Waktu"] || rowData.waktu || "").substring(0, 5);
+          const { data: existing } = await supabase.from("laporan")
+            .select("id").eq("teknisi", teknisi).eq("tanggal", tanggal)
+            .ilike("waktu", waktu + "%").limit(1);
+          if (existing && existing.length > 0)
+            await supabase.from("laporan").update(updatePayload).eq("id", existing[0].id);
         }
       } catch (e) { console.warn("Supabase sync skip:", e.message); }
 
