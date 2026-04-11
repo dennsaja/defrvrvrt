@@ -899,21 +899,10 @@ async function handleAvatarUpload(input) {
 }
 
 function triggerCoverUpload() {
-  const t = document.getElementById('toast');
-  if (t) {
-    if (t._toastTimer) clearTimeout(t._toastTimer);
-    t.className = 'toast ok';
-    void t.offsetWidth;
-    t.textContent = 'Rekomendasi: 1920×480px · Maks 5MB (JPG/PNG)';
-    t.className = 'toast ok show';
-  }
-  setTimeout(() => {
-    document.getElementById('coverInput')?.click();
-    setTimeout(() => {
-      if (t) { t.classList.remove('show'); t._toastTimer = null; }
-    }, 3000);
-  }, 100);
+  toast('📐 Rekomendasi: 1920×480px · Maks 5MB (JPG/PNG)', 'ok');
+  document.getElementById('coverInput')?.click();
 }
+
 async function handleCoverUpload(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1019,8 +1008,9 @@ function renderAdminTabs() {
       </div>
     </div>
     <div class="adm-tab-bar">
-      <button class="adm-tab ${adminActiveTab==='laporan'?'active':''}" onclick="switchAdminTab('laporan')">📊 Laporan Teknisi <span style="background:rgba(255,255,255,.25);padding:1px 7px;border-radius:50px;font-size:11px;margin-left:4px">${adminData.length}</span></button>
-      <button class="adm-tab ${adminActiveTab==='tugas'?'active':''}" onclick="switchAdminTab('tugas')">📌 Kelola Tugas ${pendingCount>0?`<span style="background:#f72e2e;padding:1px 7px;border-radius:50px;font-size:11px;margin-left:4px;color:#fff">${pendingCount}</span>`:''}</button>
+      <button class="adm-tab ${adminActiveTab==='laporan'?'active':''}" onclick="switchAdminTab('laporan')">📊 Laporan <span style="background:rgba(255,255,255,.25);padding:1px 7px;border-radius:50px;font-size:11px;margin-left:4px">${adminData.length}</span></button>
+      <button class="adm-tab ${adminActiveTab==='tugas'?'active':''}" onclick="switchAdminTab('tugas')">📌 Tugas ${pendingCount>0?`<span style="background:#f72e2e;padding:1px 7px;border-radius:50px;font-size:11px;margin-left:4px;color:#fff">${pendingCount}</span>`:''}</button>
+      <button class="adm-tab ${adminActiveTab==='akun'?'active':''}" onclick="switchAdminTab('akun')">👥 Akun Teknisi</button>
     </div>
     <div id="adm-tab-content"></div>
   `;
@@ -1029,16 +1019,16 @@ function renderAdminTabs() {
 
 function switchAdminTab(tab) {
   adminActiveTab = tab;
-  // Update tab visual
   document.querySelectorAll('.adm-tab').forEach((b,i) => {
-    b.classList.toggle('active', (i===0&&tab==='laporan')||(i===1&&tab==='tugas'));
+    b.classList.toggle('active', (i===0&&tab==='laporan')||(i===1&&tab==='tugas')||(i===2&&tab==='akun'));
   });
   renderAdminTabContent();
 }
 
 function renderAdminTabContent() {
   if (adminActiveTab === 'laporan') renderAdminTable();
-  else renderAdminTugasPanel();
+  else if (adminActiveTab === 'tugas') renderAdminTugasPanel();
+  else renderAdminAkunPanel();
 }
 
 // Render tabel utama admin
@@ -1613,6 +1603,161 @@ async function doDeleteTugas(id) {
   }
 }
 
+// ── AKUN TEKNISI PANEL ───────────────────────────────────────────────
+let akunList = [];
+
+async function renderAdminAkunPanel() {
+  const con = document.getElementById('adm-tab-content');
+  if (!con) return;
+  con.innerHTML = `<div class="loading-row"><div class="spin" style="border-top-color:var(--adm)"></div><span>Memuat data akun...</span></div>`;
+  try {
+    const res = await fetch('/api/users', { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) { con.innerHTML = `<div style="background:#fff;border-radius:14px;padding:24px;text-align:center;color:var(--r)">❌ Gagal memuat akun</div>`; return; }
+    akunList = await res.json();
+    renderAkunList();
+  } catch(e) {
+    con.innerHTML = `<div style="background:#fff;border-radius:14px;padding:24px;text-align:center;color:var(--r)">❌ ${e.message}</div>`;
+  }
+}
+
+function renderAkunList() {
+  const con = document.getElementById('adm-tab-content');
+  if (!con) return;
+  const teknisi = akunList.filter(u => u.role !== 'admin');
+  const admins  = akunList.filter(u => u.role === 'admin');
+
+  con.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700">👥 Daftar Akun Teknisi</div>
+      <div style="font-size:12px;color:var(--t3)">${teknisi.length} teknisi · ${admins.length} admin</div>
+    </div>
+    ${teknisi.length === 0 ? `<div style="background:#fff;border-radius:14px;padding:24px;text-align:center;color:var(--t3)">Belum ada akun teknisi</div>` :
+      teknisi.map(u => buildAkunCard(u)).join('')
+    }
+    ${admins.length > 0 ? `
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--t3);margin:16px 0 8px">🛡️ Akun Admin</div>
+      ${admins.map(u => buildAkunCard(u, true)).join('')}
+    ` : ''}
+  `;
+}
+
+function buildAkunCard(u, isAdmin = false) {
+  const avatar = u.foto_profil
+    ? `<img src="${u.foto_profil}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid var(--bd);flex-shrink:0">`
+    : `<div style="width:46px;height:46px;border-radius:50%;background:${isAdmin?'var(--adm)':'var(--p)'};display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;flex-shrink:0">${(u.username||'?').substring(0,2).toUpperCase()}</div>`;
+  const joined = u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : '-';
+  const verified = u.verified ? `<span style="background:#E6FAF5;color:#00856E;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ Terverifikasi</span>` : `<span style="background:#FFF8E6;color:#B7791F;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">⏳ Belum verif</span>`;
+
+  return `<div style="background:#fff;border-radius:14px;padding:14px;border:1px solid var(--bd);box-shadow:var(--sh);margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:12px">
+      ${avatar}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
+          <div style="font-weight:700;font-size:14px">${u.nama_lengkap || u.username}</div>
+          ${verified}
+        </div>
+        ${u.nama_lengkap ? `<div style="font-size:11px;color:var(--t3);margin-bottom:2px">@${u.username}</div>` : ''}
+        <div style="font-size:11px;color:var(--t3)">📱 ${u.phone||'-'} · 📧 ${u.email||'-'}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">📅 Bergabung ${joined}</div>
+      </div>
+      ${!isAdmin ? `<button onclick="showAkunDetail('${u.id}')" style="padding:7px 12px;background:var(--adml);color:var(--adm);border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">👁️ Detail</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function showAkunDetail(id) {
+  const u = akunList.find(x => x.id === id);
+  if (!u) return;
+  const joined = u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}) : '-';
+  const avatar = u.foto_profil
+    ? `<img src="${u.foto_profil}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.4)">`
+    : `<div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;border:3px solid rgba(255,255,255,.3);color:#fff">${(u.username||'?').substring(0,2).toUpperCase()}</div>`;
+  const coverBg = u.foto_cover ? `url('${u.foto_cover}') center/cover` : 'linear-gradient(135deg,#481414,#f93f3f)';
+
+  const mo = document.getElementById('tugasDetailModal') || (() => {
+    const el = document.createElement('div');
+    el.id = 'akunDetailModal';
+    el.className = 'mo';
+    el.style.cssText = 'display:flex';
+    document.body.appendChild(el);
+    return el;
+  })();
+
+  const modalEl = document.getElementById('akunDetailModal') || mo;
+  modalEl.id = 'akunDetailModal';
+  modalEl.className = 'mo';
+  modalEl.style.display = 'flex';
+
+  modalEl.innerHTML = `
+    <div class="mbox" style="padding:0;overflow:hidden;max-width:420px">
+      <!-- Cover mini -->
+      <div style="background:${coverBg};height:80px;position:relative">
+        <button onclick="document.getElementById('akunDetailModal').style.display='none'" style="position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.4);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+      </div>
+      <!-- Avatar -->
+      <div style="padding:0 20px 20px">
+        <div style="margin-top:-36px;margin-bottom:10px">${avatar}</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700">${u.nama_lengkap || u.username}</div>
+        ${u.nama_lengkap ? `<div style="font-size:12px;color:var(--t3);margin-bottom:8px">@${u.username}</div>` : '<div style="margin-bottom:8px"></div>'}
+        <div style="display:flex;flex-direction:column;gap:0;background:var(--s2);border-radius:10px;overflow:hidden;border:1px solid var(--bd);margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Email</span><span style="font-size:12px;font-weight:600">${u.email||'-'}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">No. HP</span><span style="font-size:12px;font-weight:600">${u.phone||'-'}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Status</span><span style="font-size:12px;font-weight:600">${u.verified ? '✅ Terverifikasi' : '⚠️ Belum verifikasi'}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:9px 12px"><span style="font-size:12px;color:var(--t3)">Bergabung</span><span style="font-size:12px;font-weight:600">${joined}</span></div>
+        </div>
+        <button onclick="confirmHapusAkun('${u.id}','${(u.nama_lengkap||u.username).replace(/'/g,"\'")}')"
+          style="width:100%;padding:11px;background:#FFF0F0;border:1.5px solid #FFCCCC;border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;color:var(--r);cursor:pointer">
+          🗑️ Hapus Akun Ini
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function confirmHapusAkun(id, nama) {
+  const mo = document.getElementById('akunDetailModal');
+  if (mo) mo.style.display = 'none';
+  const conf = document.createElement('div');
+  conf.id = 'akunConfModal';
+  conf.className = 'mo';
+  conf.style.display = 'flex';
+  conf.innerHTML = `
+    <div class="mbox" style="max-width:340px;text-align:center">
+      <div style="font-size:36px;margin-bottom:10px">⚠️</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px">Hapus Akun?</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:18px">Akun <strong>${nama}</strong> beserta semua laporannya akan dihapus permanen.</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('akunConfModal').remove();document.getElementById('akunDetailModal')&&(document.getElementById('akunDetailModal').style.display='none');"
+          style="flex:1;padding:11px;border:1.5px solid var(--bd);border-radius:10px;background:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;color:var(--t2)">Batal</button>
+        <button id="btnHapusAkun" onclick="doHapusAkun('${id}')"
+          style="flex:1;padding:11px;border:none;border-radius:10px;background:var(--r);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">🗑️ Hapus</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(conf);
+}
+
+async function doHapusAkun(id) {
+  const btn = document.getElementById('btnHapusAkun');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Menghapus...'; }
+  try {
+    const res = await fetch('/api/users', {
+      method: 'DELETE',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+      body: JSON.stringify({ id })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error||'Gagal hapus akun','err'); if(btn){btn.disabled=false;btn.textContent='🗑️ Hapus';} return; }
+    document.getElementById('akunConfModal')?.remove();
+    akunList = akunList.filter(u => u.id !== id);
+    toast('✅ Akun berhasil dihapus','ok');
+    renderAkunList();
+  } catch(e) {
+    toast('Gagal konek server','err');
+    if(btn){btn.disabled=false;btn.textContent='🗑️ Hapus';}
+  }
+}
+
 // ── DELETE CONFIRM ────────────────────────────────────────────────────
 function confirmDelete(idx) {
   const r = adminFiltered[idx];
@@ -2169,23 +2314,20 @@ function setAlert(id, msg, type) {
   el.innerHTML = msg;
 }
 function toast(msg, type = '') {
+  // Selalu pakai elemen yang sama di luar #con-adm
   let t = document.getElementById('toast');
   if (!t) return;
-  if (t._toastTimer) { clearTimeout(t._toastTimer); t._toastTimer = null; }
-  t.className = 'toast';
+  // Reset dulu — batalkan timer sebelumnya
+  if (t._toastTimer) clearTimeout(t._toastTimer);
+  t.className = 'toast'; // reset tanpa show dulu
   t.textContent = msg;
+  // Force reflow agar animasi restart dari awal
   void t.offsetWidth;
   t.className = 'toast' + (type ? ' ' + type : '') + ' show';
-  const hideAt = Date.now() + 3000;
-  function checkHide() {
-    if (Date.now() >= hideAt) {
-      t.classList.remove('show');
-      t._toastTimer = null;
-    } else {
-      t._toastTimer = setTimeout(checkHide, Math.min(200, hideAt - Date.now()));
-    }
-  }
-  t._toastTimer = setTimeout(checkHide, 3000);
+  t._toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+    t._toastTimer = null;
+  }, 3000);
 }
 function showLoading(txt='Memproses...') {
   const el = document.getElementById('ltxt'); if (el) el.textContent = txt;
