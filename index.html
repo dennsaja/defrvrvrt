@@ -899,10 +899,21 @@ async function handleAvatarUpload(input) {
 }
 
 function triggerCoverUpload() {
-  toast('📐 Rekomendasi: 1920×480px · Maks 5MB (JPG/PNG)', 'ok');
-  document.getElementById('coverInput')?.click();
+  const t = document.getElementById('toast');
+  if (t) {
+    if (t._toastTimer) clearTimeout(t._toastTimer);
+    t.className = 'toast ok';
+    void t.offsetWidth;
+    t.textContent = 'Rekomendasi: 1920×480px · Maks 5MB (JPG/PNG)';
+    t.className = 'toast ok show';
+  }
+  setTimeout(() => {
+    document.getElementById('coverInput')?.click();
+    setTimeout(() => {
+      if (t) { t.classList.remove('show'); t._toastTimer = null; }
+    }, 3000);
+  }, 100);
 }
-
 async function handleCoverUpload(input) {
   const file = input.files[0];
   if (!file) return;
@@ -2158,20 +2169,23 @@ function setAlert(id, msg, type) {
   el.innerHTML = msg;
 }
 function toast(msg, type = '') {
-  // Selalu pakai elemen yang sama di luar #con-adm
   let t = document.getElementById('toast');
   if (!t) return;
-  // Reset dulu — batalkan timer sebelumnya
-  if (t._toastTimer) clearTimeout(t._toastTimer);
-  t.className = 'toast'; // reset tanpa show dulu
+  if (t._toastTimer) { clearTimeout(t._toastTimer); t._toastTimer = null; }
+  t.className = 'toast';
   t.textContent = msg;
-  // Force reflow agar animasi restart dari awal
   void t.offsetWidth;
   t.className = 'toast' + (type ? ' ' + type : '') + ' show';
-  t._toastTimer = setTimeout(() => {
-    t.classList.remove('show');
-    t._toastTimer = null;
-  }, 3000);
+  const hideAt = Date.now() + 3000;
+  function checkHide() {
+    if (Date.now() >= hideAt) {
+      t.classList.remove('show');
+      t._toastTimer = null;
+    } else {
+      t._toastTimer = setTimeout(checkHide, Math.min(200, hideAt - Date.now()));
+    }
+  }
+  t._toastTimer = setTimeout(checkHide, 3000);
 }
 function showLoading(txt='Memproses...') {
   const el = document.getElementById('ltxt'); if (el) el.textContent = txt;
