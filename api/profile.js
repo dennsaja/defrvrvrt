@@ -55,11 +55,12 @@ module.exports = async function handler(req, res) {
 
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-  // ── GET: ambil profil terkini ──────────────────────────────────────
+  // ── GET: ambil profil terkini ─────────────────────────────────────
   if (req.method === "GET") {
     try {
       const { data, error } = await supabase
-        .from("users").select("id,username,nama_lengkap,phone,email,foto_profil,foto_cover,created_at")
+        .from("users")
+        .select("id,username,nama_lengkap,phone,email,foto_profil,foto_cover,created_at")
         .eq("id", decoded.id).single();
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ success: true, user: data });
@@ -68,13 +69,13 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ── PUT: update profil ─────────────────────────────────────────────
+  // ── PUT: update profil ────────────────────────────────────────────
   if (req.method === "PUT") {
     try {
       const { username, nama_lengkap, phone, foto_profil, foto_cover } = req.body || {};
       const updates = {};
 
-      // Validasi username baru jika diubah
+      // Validasi & tandai username baru jika diubah
       if (username && username !== decoded.username) {
         const { data: exist } = await supabase
           .from("users").select("id").eq("username", username).single();
@@ -105,6 +106,20 @@ module.exports = async function handler(req, res) {
       if (Object.keys(updates).length === 0)
         return res.status(400).json({ error: "Tidak ada data yang diubah" });
 
+      // ✅ FIX: Jika username berubah, update semua laporan lama DULU
+      // sebelum update users — agar referensi username lama (decoded.username) masih valid
+      if (updates.username) {
+        const { error: laporanError } = await supabase
+          .from("laporan")
+          .update({ teknisi: updates.username })
+          .eq("teknisi", decoded.username);
+        if (laporanError) {
+          console.warn("Gagal sync laporan:", laporanError.message);
+          // Lanjut saja, jangan gagalkan seluruh request
+        }
+      }
+
+      // Update tabel users
       const { data, error } = await supabase
         .from("users")
         .update(updates)
@@ -114,6 +129,7 @@ module.exports = async function handler(req, res) {
 
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ success: true, user: data });
+
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
