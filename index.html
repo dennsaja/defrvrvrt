@@ -801,13 +801,13 @@ async function renderProfil() {
         ${currentUser.foto_cover
           ? `<img src="${currentUser.foto_cover}" style="width:100%;height:120px;object-fit:cover;display:block">`
           : `<div style="width:100%;height:120px;background:linear-gradient(135deg,#481414,#f93f3f)"></div>`}
-        <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px);display:flex;align-items:center;gap:4px">
-          🖼️ Ganti Cover <span style="font-size:9px;opacity:.75">1920×480px · maks 5MB</span>
+        <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px)">
+        Ganti Cover
         </div>
         <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="handleCoverUpload(this)">
       </div>
       <!-- PROFIL INFO -->
-      <div style="background:linear-gradient(180deg,rgba(72,20,20,.92),rgba(249,63,63,.85));padding:0 20px 20px;text-align:center;color:#fff">
+      <div style="background:linear-gradient(135deg,#481414,#f93f3f);padding:0 20px 20px;text-align:center;color:#fff">
         <div style="position:relative;display:inline-block;margin-top:-36px;margin-bottom:8px">
           ${avatarHtml}
           <button onclick="triggerAvatarUpload()" style="position:absolute;bottom:2px;right:2px;width:26px;height:26px;background:var(--p);border:2px solid #fff;border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0">✏️</button>
@@ -899,7 +899,8 @@ async function handleAvatarUpload(input) {
 }
 
 function triggerCoverUpload() {
-  document.getElementById('coverInput')?.click();
+  toast('📐 Rekomendasi: 1920×480px · Maks 5MB (JPG/PNG)', 'ok');
+  setTimeout(() => document.getElementById('coverInput')?.click(), 800);
 }
 
 async function handleCoverUpload(input) {
