@@ -532,13 +532,13 @@ async function renderTugasTeknisi() {
     }
 
     const renderTugasCard = (t, showBtn) => {
-      const ico = t.jenis_kegiatan === 'Pemasangan Baru' ? '📶' : t.jenis_kegiatan === 'Instalasi CCTV' ? '📷' : t.jenis_kegiatan === 'Perbaikan' ? '🔧' : '🛡️';
+      const ico = t.jenis_kegiatan === 'Pemasangan Baru' ? '' : t.jenis_kegiatan === 'Instalasi CCTV' ? '' : t.jenis_kegiatan === 'Perbaikan' ? '' : '';
       const tgl = new Date(t.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
       return `<div class="tugas-card ${t.status === 'selesai' ? 'status-selesai' : ''}">
         <div class="tugas-card-hdr">
           <div>
             <div class="tugas-jenis">${ico} ${t.jenis_kegiatan}</div>
-            <div class="tugas-date">📅 Diberikan ${tgl}</div>
+            <div class="tugas-date">Diberikan ${tgl}</div>
           </div>
           <span class="tugas-badge ${t.status === 'selesai' ? 'tugas-selesai' : 'tugas-pending'}">${t.status === 'selesai' ? '✅ Selesai' : '⏳ Pending'}</span>
         </div>
@@ -547,9 +547,9 @@ async function renderTugasTeknisi() {
           ${t.tempat && t.tempat !== '-' ? `<span class="tugas-chip">📍 ${t.tempat}</span>` : ''}
           ${t.link_maps ? `<a href="${t.link_maps}" target="_blank" class="tugas-chip" style="color:var(--adm);text-decoration:none">🗺️ Buka Maps</a>` : ''}
         </div>
-        ${t.barang && t.barang !== '-' ? `<div class="tugas-barang">🧰 <strong>Barang dibawa:</strong> ${t.barang}</div>` : ''}
-        <div class="tugas-catatan">📝 ${t.catatan}</div>
-        ${showBtn ? `<button class="btn-selesai" onclick="tandaiTugasSelesai('${t.id}',this)">✅ Tandai Selesai</button>` : ''}
+        ${t.barang && t.barang !== '-' ? `<div class="tugas-barang"><strong>Barang dibawa:</strong> ${t.barang}</div>` : ''}
+        <div class="tugas-catatan">${t.catatan}</div>
+        ${showBtn ? `<button class="btn-selesai" onclick="tandaiTugasSelesai('${t.id}',this)">Tandai Selesai</button>` : ''}
       </div>`;
     };
 
