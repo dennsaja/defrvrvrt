@@ -25,6 +25,24 @@ async function uploadAvatarToStorage(supabase, base64, supabaseUrl) {
   }
 }
 
+async function uploadCoverToStorage(supabase, base64, supabaseUrl) {
+  if (!base64 || !base64.includes(",")) return null;
+  try {
+    const ext = base64.startsWith("data:image/png") ? "png" : "jpg";
+    const fileName = "cover_" + Date.now() + "." + ext;
+    const buffer = Buffer.from(base64.split(",")[1], "base64");
+    const contentType = ext === "png" ? "image/png" : "image/jpeg";
+    const { error } = await supabase.storage
+      .from("avatars")
+      .upload(fileName, buffer, { contentType, upsert: false });
+    if (error) { console.warn("Cover upload error:", error.message); return null; }
+    return supabaseUrl + "/storage/v1/object/public/avatars/" + fileName;
+  } catch (e) {
+    console.warn("Upload cover gagal:", e.message);
+    return null;
+  }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS");
@@ -41,7 +59,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "GET") {
     try {
       const { data, error } = await supabase
-        .from("users").select("id,username,nama_lengkap,phone,email,foto_profil,created_at")
+        .from("users").select("id,username,nama_lengkap,phone,email,foto_profil,foto_cover,created_at")
         .eq("id", decoded.id).single();
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ success: true, user: data });
@@ -53,7 +71,7 @@ module.exports = async function handler(req, res) {
   // ── PUT: update profil ─────────────────────────────────────────────
   if (req.method === "PUT") {
     try {
-      const { username, nama_lengkap, phone, foto_profil } = req.body || {};
+      const { username, nama_lengkap, phone, foto_profil, foto_cover } = req.body || {};
       const updates = {};
 
       // Validasi username baru jika diubah
@@ -78,6 +96,12 @@ module.exports = async function handler(req, res) {
         if (url) updates.foto_profil = url;
       }
 
+      // Upload foto cover jika ada
+      if (foto_cover && foto_cover.startsWith("data:image")) {
+        const url = await uploadCoverToStorage(supabase, foto_cover, process.env.SUPABASE_URL);
+        if (url) updates.foto_cover = url;
+      }
+
       if (Object.keys(updates).length === 0)
         return res.status(400).json({ error: "Tidak ada data yang diubah" });
 
@@ -85,7 +109,7 @@ module.exports = async function handler(req, res) {
         .from("users")
         .update(updates)
         .eq("id", decoded.id)
-        .select("id,username,nama_lengkap,phone,email,foto_profil,created_at")
+        .select("id,username,nama_lengkap,phone,email,foto_profil,foto_cover,created_at")
         .single();
 
       if (error) return res.status(500).json({ error: error.message });

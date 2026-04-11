@@ -141,6 +141,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .bb{background:var(--pl);color:var(--p)}
 .bp{background:#FFF8E6;color:#B7791F}
 .bm{background:var(--gl);color:#00856E}
+.bi{background:#F3E8FF;color:#7C3AED}
 .rbody{font-size:12px;color:var(--t2);line-height:1.6}
 .rmeta{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .mc{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--t3);background:var(--s2);padding:3px 8px;border-radius:50px;border:1px solid var(--bd)}
@@ -496,9 +497,9 @@ async function renderDash() {
     <div class="sec-ttl">Aktivitas Terbaru</div>
     ${mine.length === 0 ? `<div class="empty"><div class="ei">📋</div><div class="et">Belum ada laporan</div><div class="es">Buat laporan kegiatan pertama</div></div>`
     : [...mine].slice(0, 3).map(r => {
-      const ico = r.jenis_kegiatan === 'Pemasangan Baru' ? '📶' : r.jenis_kegiatan === 'Perbaikan' ? '🔧' : '🛡️';
-      const bg  = r.jenis_kegiatan === 'Pemasangan Baru' ? '#E8F4FF' : r.jenis_kegiatan === 'Perbaikan' ? '#FFF8E6' : '#E6FAF5';
-      const bc  = r.jenis_kegiatan === 'Pemasangan Baru' ? 'bb' : r.jenis_kegiatan === 'Perbaikan' ? 'bp' : 'bm';
+      const ico = r.jenis_kegiatan === 'Pemasangan Baru' ? '📶' : r.jenis_kegiatan === 'Perbaikan' ? '🔧' : r.jenis_kegiatan === 'Instalasi CCTV' ? '📷' : '🛡️';
+      const bg  = r.jenis_kegiatan === 'Pemasangan Baru' ? '#E8F4FF' : r.jenis_kegiatan === 'Perbaikan' ? '#FFF8E6' : r.jenis_kegiatan === 'Instalasi CCTV' ? '#F3E8FF' : '#E6FAF5';
+      const bc  = r.jenis_kegiatan === 'Pemasangan Baru' ? 'bb' : r.jenis_kegiatan === 'Perbaikan' ? 'bp' : r.jenis_kegiatan === 'Instalasi CCTV' ? 'bi' : 'bm';
       return `<div class="ai"><div class="ai-ico" style="background:${bg}">${ico}</div><div><div class="ai-t">${r.jenis_kegiatan}</div><div class="ai-m">${r.nama_client && r.nama_client !== '-' ? '👤 ' + r.nama_client + ' · ' : ''}📅 ${r.tanggal} ${r.waktu}</div></div><div class="ai-b ${bc}">${r.jenis_kegiatan.split(' ')[0]}</div></div>`;
     }).join('')}
   `;
@@ -601,6 +602,7 @@ function renderLap() {
         <div><input type="radio" name="jenis" id="j1" value="Pemasangan Baru" class="kr" onchange="onJenisChange()"><label for="j1" class="kl"><span class="ke">📶</span><span class="kt">Pemasangan Baru</span></label></div>
         <div><input type="radio" name="jenis" id="j2" value="Perbaikan"       class="kr" onchange="onJenisChange()"><label for="j2" class="kl"><span class="ke">🔧</span><span class="kt">Perbaikan</span></label></div>
         <div><input type="radio" name="jenis" id="j3" value="Pemeliharaan"    class="kr" onchange="onJenisChange()"><label for="j3" class="kl"><span class="ke">🛡️</span><span class="kt">Pemeliharaan</span></label></div>
+        <div><input type="radio" name="jenis" id="j4" value="Instalasi CCTV"  class="kr" onchange="onJenisChange()"><label for="j4" class="kl"><span class="ke">📷</span><span class="kt">Instalasi CCTV</span></label></div>
       </div>
 
       <div id="jenisFields" style="display:none">
@@ -673,6 +675,11 @@ function onJenisChange() {
     fieldNamaClient.style.display = 'block';
     lblNamaClient.innerHTML = 'Nama Client <span class="req">*</span>';
     document.getElementById('fTempat').value = '';
+  } else if (jenis === 'Instalasi CCTV') {
+    // Instalasi CCTV: tampilkan client (wajib) + tempat
+    fieldTempat.style.display = 'block';
+    fieldNamaClient.style.display = 'block';
+    lblNamaClient.innerHTML = 'Nama Client <span class="req">*</span>';
   } else {
     // Perbaikan / Pemeliharaan
     fieldTempat.style.display = 'block';
@@ -706,8 +713,8 @@ async function renderRiw() {
     const wkt = (r.waktu || r['Waktu'] || '-').substring(0, 5);
     const cli = r.nama_client || r['Nama Client'] || '-';
     const cat = r.catatan || r['Catatan'] || '-';
-    const ico = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : '🛡️';
-    const bc  = j === 'Pemasangan Baru' ? 'bb' : j === 'Perbaikan' ? 'bp' : 'bm';
+    const ico = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : j === 'Instalasi CCTV' ? '📷' : '🛡️';
+    const bc  = j === 'Pemasangan Baru' ? 'bb' : j === 'Perbaikan' ? 'bp' : j === 'Instalasi CCTV' ? 'bi' : 'bm';
     const fotoUrl = r.foto || r['URL Foto'] || '';
     return `<div class="rc" onclick="showDetail(${idx})" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
       <div class="rt"><div><div class="rtype">${ico} ${j}</div><div class="rdate">${tgl} · ${wkt}</div></div><div class="rbadge ${bc}">${j === 'Pemasangan Baru' ? 'Baru' : j}</div></div>
@@ -730,7 +737,8 @@ function showDetail(idx) {
   const cat     = r.catatan || r['Catatan'] || '-';
   const fotoUrl = r.foto || r['URL Foto'] || '';
   const ts      = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '-';
-  const ico     = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : '🛡️';
+  const ico     = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : j === 'Instalasi CCTV' ? '📷' : '🛡️';
+  const sumber  = r.sumber === 'tugas' ? '📋 Dari Tugas Admin' : null;
 
   document.getElementById('con').innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
@@ -744,6 +752,7 @@ function showDetail(idx) {
         <div style="background:rgba(255,255,255,.15);padding:5px 10px;border-radius:50px;font-size:11px">📅 ${tgl}</div>
         <div style="background:rgba(255,255,255,.15);padding:5px 10px;border-radius:50px;font-size:11px">🕐 ${wkt}</div>
         ${estimasi !== '-' ? `<div style="background:rgba(255,255,255,.15);padding:5px 10px;border-radius:50px;font-size:11px">⏱️ ${estimasi}</div>` : ''}
+        ${sumber ? `<div style="background:rgba(255,255,255,.2);padding:5px 10px;border-radius:50px;font-size:11px;font-weight:600">${sumber}</div>` : ''}
       </div>
     </div>
     ${fotoUrl && fotoUrl !== '-' && fotoUrl !== '' ? `
@@ -786,17 +795,30 @@ async function renderProfil() {
     : `<div style="width:80px;height:80px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:28px;font-weight:700;border:3px solid rgba(255,255,255,.35)">${currentUser.username.substring(0,2).toUpperCase()}</div>`;
 
   document.getElementById('con').innerHTML = `
-    <div style="background:linear-gradient(135deg,#481414,#f93f3f);border-radius:18px;padding:24px;text-align:center;color:#fff;margin-bottom:14px;position:relative">
-      <div style="position:relative;display:inline-block;margin-bottom:10px">
-        ${avatarHtml}
-        <button onclick="triggerAvatarUpload()" style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:var(--p);border:2px solid #fff;border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0">✏️</button>
-        <input type="file" id="avatarInput" accept="image/*,.heic,.heif" style="display:none" onchange="handleAvatarUpload(this)">
+    <div style="border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 24px rgba(72,20,20,.18)">
+      <!-- COVER / BANNER -->
+      <div style="position:relative;width:100%;height:120px;cursor:pointer" onclick="triggerCoverUpload()" title="Klik untuk ganti cover">
+        ${currentUser.foto_cover
+          ? `<img src="${currentUser.foto_cover}" style="width:100%;height:120px;object-fit:cover;display:block">`
+          : `<div style="width:100%;height:120px;background:linear-gradient(135deg,#481414,#f93f3f)"></div>`}
+        <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px);display:flex;align-items:center;gap:4px">
+          🖼️ Ganti Cover <span style="font-size:9px;opacity:.75">1920×480px · maks 5MB</span>
+        </div>
+        <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="handleCoverUpload(this)">
       </div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700">${currentUser.nama_lengkap || currentUser.username}</div>
-      ${currentUser.nama_lengkap ? `<div style="font-size:12px;opacity:.7;margin-top:2px">@${currentUser.username}</div>` : ''}
-      <div style="font-size:12px;opacity:.7;margin-top:3px">📱 ${currentUser.phone || '-'}</div>
-      <div style="font-size:12px;opacity:.6;margin-top:2px">📧 ${currentUser.email || '-'}</div>
-      <div style="font-size:11px;opacity:.5;margin-top:3px">Bergabung: ${new Date(currentUser.created_at).toLocaleDateString('id-ID',{year:'numeric',month:'long',day:'numeric'})}</div>
+      <!-- PROFIL INFO -->
+      <div style="background:linear-gradient(180deg,rgba(72,20,20,.92),rgba(249,63,63,.85));padding:0 20px 20px;text-align:center;color:#fff">
+        <div style="position:relative;display:inline-block;margin-top:-36px;margin-bottom:8px">
+          ${avatarHtml}
+          <button onclick="triggerAvatarUpload()" style="position:absolute;bottom:2px;right:2px;width:26px;height:26px;background:var(--p);border:2px solid #fff;border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0">✏️</button>
+          <input type="file" id="avatarInput" accept="image/*,.heic,.heif" style="display:none" onchange="handleAvatarUpload(this)">
+        </div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700">${currentUser.nama_lengkap || currentUser.username}</div>
+        ${currentUser.nama_lengkap ? `<div style="font-size:12px;opacity:.7;margin-top:2px">@${currentUser.username}</div>` : ''}
+        <div style="font-size:12px;opacity:.7;margin-top:3px">📱 ${currentUser.phone || '-'}</div>
+        <div style="font-size:12px;opacity:.6;margin-top:2px">📧 ${currentUser.email || '-'}</div>
+        <div style="font-size:11px;opacity:.5;margin-top:3px">Bergabung: ${new Date(currentUser.created_at).toLocaleDateString('id-ID',{year:'numeric',month:'long',day:'numeric'})}</div>
+      </div>
     </div>
 
     <div class="sgrid" style="margin-bottom:14px">
@@ -804,6 +826,7 @@ async function renderProfil() {
       <div class="sc"><div class="sc-n">${mine.filter(r=>r.jenis_kegiatan==='Pemasangan Baru').length}</div><div class="sc-l">Pemasangan</div></div>
       <div class="sc"><div class="sc-n">${mine.filter(r=>r.jenis_kegiatan==='Perbaikan').length}</div><div class="sc-l">Perbaikan</div></div>
       <div class="sc"><div class="sc-n">${mine.filter(r=>r.jenis_kegiatan==='Pemeliharaan').length}</div><div class="sc-l">Pemeliharaan</div></div>
+      <div class="sc"><div class="sc-n" style="color:#7C3AED">${mine.filter(r=>r.jenis_kegiatan==='Instalasi CCTV').length}</div><div class="sc-l">Inst. CCTV</div></div>
     </div>
 
     <!-- Form Edit Profil -->
@@ -871,6 +894,40 @@ async function handleAvatarUpload(input) {
     updateNav();
   } catch (e) {
     hideLoading(); toast('Gagal upload foto', 'err');
+  }
+  input.value = '';
+}
+
+function triggerCoverUpload() {
+  document.getElementById('coverInput')?.click();
+}
+
+async function handleCoverUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    toast('Cover maks 5MB. Rekomendasi ukuran: 1920×480px', 'err');
+    input.value = '';
+    return;
+  }
+  showLoading('Mengupload cover profil...');
+  try {
+    const dataUrl = await readAsDataURL(file);
+    const compressed = await compressImage(dataUrl, 1920, 0.82);
+    const res = await fetch('/api/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ foto_cover: compressed })
+    });
+    const data = await res.json();
+    hideLoading();
+    if (!res.ok) { toast(data.error || 'Gagal upload cover', 'err'); return; }
+    currentUser = { ...currentUser, ...data.user };
+    localStorage.setItem('tc_user', JSON.stringify(currentUser));
+    toast('✅ Cover profil diperbarui!', 'ok');
+    renderProfil();
+  } catch (e) {
+    hideLoading(); toast('Gagal upload cover', 'err');
   }
   input.value = '';
 }
@@ -2030,8 +2087,8 @@ async function submitLap() {
   if (!catatan) { toast('Catatan kegiatan wajib diisi!', 'err'); return; }
 
   // Validasi kolom per jenis
-  if (jenis === 'Pemasangan Baru' && !client.trim()) {
-    toast('Nama client wajib untuk Pemasangan Baru!', 'err'); return;
+  if ((jenis === 'Pemasangan Baru' || jenis === 'Instalasi CCTV') && !client.trim()) {
+    toast('Nama client wajib untuk ' + jenis + '!', 'err'); return;
   }
   if ((jenis === 'Perbaikan' || jenis === 'Pemeliharaan') && (!tempat || tempat === '-')) {
     toast('Tempat wajib untuk ' + jenis + '!', 'err'); return;

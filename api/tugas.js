@@ -93,6 +93,26 @@ module.exports = async function handler(req, res) {
 
       const { data, error } = await supabase.from("tugas").update(updateData).eq("id", id).select().single();
       if (error) return res.status(500).json({ error: error.message });
+
+      // Jika status berubah menjadi selesai, otomatis buat entri di laporan
+      if (updateData.status === "selesai" && existing.status !== "selesai") {
+        const now = new Date();
+        const tanggal = now.toISOString().split("T")[0];
+        const waktu   = now.toTimeString().substring(0, 5);
+        await supabase.from("laporan").insert([{
+          teknisi:       data.teknisi,
+          jenis_kegiatan: data.jenis_kegiatan,
+          tanggal,
+          waktu,
+          nama_client:   data.nama_client || "-",
+          tempat:        data.tempat      || "-",
+          estimasi:      "-",
+          catatan:       data.catatan     || "-",
+          foto:          null,
+          sumber:        "tugas"          // penanda asal dari tugas admin
+        }]);
+      }
+
       return res.status(200).json({ success: true, data });
     } catch (err) {
       return res.status(500).json({ error: err.message });
