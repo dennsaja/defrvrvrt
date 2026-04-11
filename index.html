@@ -469,11 +469,22 @@ function renderLap() {
       <div class="fg2">
         <label class="flbl">Foto Dokumentasi <span class="req">*</span></label>
         <div class="upl" id="uplZone">
-          <input type="file" id="fFoto" accept="image/*" onchange="handleUpl(this)">
-          <div class="upl-ico">📷</div>
-          <div class="upl-t" id="uplTxt">Tap untuk pilih foto</div>
-          <div class="upl-s">JPG, PNG - Maks 5MB</div>
-          <img id="prevImg" class="prev">
+          <input type="file" id="fFoto" accept="image/*,.heic,.heif,.webp,.bmp,.tiff,.tif" onchange="handleUpl(this)" style="display:none">
+<input type="file" id="fKamera" accept="image/*" capture="environment" onchange="handleUpl(this)" style="display:none">
+<div class="upl-ico">📷</div>
+<div class="upl-t" id="uplTxt">Tap untuk pilih foto</div>
+<div class="upl-s">JPG, PNG, HEIC, WEBP, dll · Maks 5MB</div>
+<div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
+  <button type="button" onclick="event.stopPropagation();document.getElementById('fFoto').click()" 
+    style="padding:7px 14px;border:1.5px solid var(--p);border-radius:8px;background:var(--pl);color:var(--p);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
+    Pilih File
+  </button>
+  <button type="button" onclick="event.stopPropagation();document.getElementById('fKamera').click()" 
+    style="padding:7px 14px;border:1.5px solid var(--p);border-radius:8px;background:var(--p);color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
+    Buka Kamera
+  </button>
+</div>
+<img id="prevImg" class="prev">
         </div>
       </div>
       <button class="btn-sub" id="btnSub" onclick="submitLap()">📤 Kirim Laporan</button>
@@ -1239,27 +1250,97 @@ function doLogout() {
 async function handleUpl(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { toast('File terlalu besar! Maks 5MB', 'err'); return; }
-  const reader = new FileReader();
-  reader.onload = e => {
+
+  if (file.size > 10 * 1024 * 1024) {
+    toast('File terlalu besar! Maks 10MB', 'err');
+    return;
+  }
+
+  const uplTxt = document.getElementById('uplTxt');
+  if (uplTxt) uplTxt.textContent = '⏳ Memproses foto...';
+
+  try {
+    let blob = file;
+
+    // Konversi HEIC/HEIF ke JPEG menggunakan canvas
+    const isHEIC = /heic|heif/i.test(file.type) || /\.heic$|\.heif$/i.test(file.name);
+
+    if (isHEIC) {
+      // Load heic2any dari CDN untuk konversi HEIC
+      if (!window.heic2any) {
+        await loadScript('https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js');
+      }
+      try {
+        blob = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+        if (Array.isArray(blob)) blob = blob[0];
+      } catch (heicErr) {
+        console.warn('heic2any gagal, coba canvas fallback:', heicErr);
+        // fallback tetap lanjut dengan file asli
+        blob = file;
+      }
+    }
+
+    // Compress & resize via canvas
+    const dataUrl = await readAsDataURL(blob);
+    const compressed = await compressImage(dataUrl, 1200, 0.82);
+    uploadedB64 = compressed;
+
+    // Update UI
+    const prev = document.getElementById('prevImg');
+    const zone = document.getElementById('uplZone');
+    const txt  = document.getElementById('uplTxt');
+    const sizeKB = Math.round((compressed.length * 3) / 4 / 1024);
+    if (prev) { prev.src = compressed; prev.style.display = 'block'; }
+    if (zone) zone.classList.add('ok');
+    if (txt)  txt.textContent = `✅ ${file.name} (${sizeKB} KB)`;
+
+  } catch (err) {
+    console.error('Upload error:', err);
+    toast('Gagal memproses foto: ' + err.message, 'err');
+    const txt = document.getElementById('uplTxt');
+    if (txt) txt.textContent = 'Tap untuk pilih foto';
+  }
+
+  // Reset input agar file yang sama bisa dipilih ulang
+  input.value = '';
+}
+
+// Helper: load script dinamis
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// Helper: FileReader as Promise
+function readAsDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Helper: compress + resize image via canvas
+function compressImage(dataUrl, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
     const img = new Image();
-    img.src = e.target.result;
     img.onload = () => {
+      const scale  = Math.min(1, maxWidth / img.width);
       const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
       const ctx = canvas.getContext('2d');
-      const maxW = 800, scale = Math.min(1, maxW / img.width);
-      canvas.width = img.width * scale; canvas.height = img.height * scale;
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      uploadedB64 = canvas.toDataURL('image/jpeg', 0.7);
-      const prev = document.getElementById('prevImg');
-      const zone = document.getElementById('uplZone');
-      const txt  = document.getElementById('uplTxt');
-      if (prev) { prev.src = uploadedB64; prev.style.display = 'block'; }
-      if (zone) zone.classList.add('ok');
-      if (txt) txt.textContent = '✅ ' + file.name;
+      resolve(canvas.toDataURL('image/jpeg', quality));
     };
-  };
-  reader.readAsDataURL(file);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
 }
 
 // ================= SUBMIT LAPORAN =================
