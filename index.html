@@ -475,7 +475,7 @@ async function renderDash() {
 
   const notifTugas = tugasPending.length > 0 ? `
     <div class="notif-tugas" onclick="goTab('tugas',document.getElementById('ni-tugas'))">
-      <div class="notif-badge">📌 ${tugasPending.length} Tugas Baru</div>
+      <div class="notif-badge">${tugasPending.length} Tugas Baru</div>
       <div class="notif-ttl">Kamu punya tugas yang belum selesai</div>
       <div class="notif-sub">Tap untuk lihat detail tugas →</div>
     </div>` : '';
@@ -640,17 +640,16 @@ function renderLap() {
           <div class="upl" id="uplZone">
             <input type="file" id="fFoto" accept="image/*,.heic,.heif,.webp,.bmp,.tiff,.tif" onchange="handleUpl(this)" style="display:none">
             <input type="file" id="fKamera" accept="image/*" capture="environment" onchange="handleUpl(this)" style="display:none">
-            <div class="upl-ico">📷</div>
             <div class="upl-t" id="uplTxt">Tap untuk pilih foto</div>
             <div class="upl-s">JPG, PNG, HEIC, WEBP, dll · Maks 10MB</div>
             <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
               <button type="button" onclick="event.stopPropagation();document.getElementById('fFoto').click()"
                 style="padding:7px 14px;border:1.5px solid var(--p);border-radius:8px;background:var(--pl);color:var(--p);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
-                🖼️ Pilih File
+                Pilih File
               </button>
               <button type="button" onclick="event.stopPropagation();document.getElementById('fKamera').click()"
                 style="padding:7px 14px;border:1.5px solid var(--p);border-radius:8px;background:var(--p);color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
-                📸 Buka Kamera
+                Buka Kamera
               </button>
             </div>
             <img id="prevImg" class="prev">
