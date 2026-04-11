@@ -13,6 +13,7 @@
     { "src": "/api/upload",         "dest": "/api/upload.js" },
     { "src": "/api/submit",         "dest": "/api/submit.js" },
     { "src": "/api/admin",          "dest": "/api/admin.js" },
+    { "src": "/api/profile",        "dest": "/api/profile.js" },
     { "src": "/(.*)",               "dest": "/index.html" }
   ]
 }

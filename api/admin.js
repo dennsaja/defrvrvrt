@@ -9,7 +9,18 @@ function verifyAdmin(req) {
   return decoded;
 }
 
-// Parse CSV dengan benar (handle quoted commas)
+function parseCSVLine(line) {
+  const cols = []; let cur = "", inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { cols.push(cur.replace(/^"|"$/g, "").trim()); cur = ""; }
+    else { cur += ch; }
+  }
+  cols.push(cur.replace(/^"|"$/g, "").trim());
+  return cols;
+}
+
 function parseCSV(text) {
   const lines = text.trim().split("\n");
   if (lines.length < 2) return [];
@@ -22,19 +33,6 @@ function parseCSV(text) {
   }).filter(r => Object.values(r).some(v => v));
 }
 
-function parseCSVLine(line) {
-  const cols = [];
-  let cur = "", inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') { inQ = !inQ; }
-    else if (ch === ',' && !inQ) { cols.push(cur.replace(/^"|"$/g, "").trim()); cur = ""; }
-    else { cur += ch; }
-  }
-  cols.push(cur.replace(/^"|"$/g, "").trim());
-  return cols;
-}
-
 async function fetchFromSheets(csvUrl) {
   if (!csvUrl) return [];
   const res = await fetch(csvUrl + "&t=" + Date.now());
@@ -42,7 +40,6 @@ async function fetchFromSheets(csvUrl) {
   return parseCSV(text);
 }
 
-// Kirim perintah edit/hapus ke Google Apps Script
 async function sendToAppsScript(action, payload) {
   const gsUrl = process.env.GS_SCRIPT_URL;
   if (!gsUrl || gsUrl.includes("GANTI")) throw new Error("GS_SCRIPT_URL belum dikonfigurasi");
@@ -52,8 +49,7 @@ async function sendToAppsScript(action, payload) {
     body: JSON.stringify({ action, ...payload })
   });
   const text = await res.text();
-  try { return JSON.parse(text); }
-  catch { return { success: true, raw: text }; }
+  try { return JSON.parse(text); } catch { return { success: true, raw: text }; }
 }
 
 module.exports = async function handler(req, res) {
@@ -62,19 +58,17 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  try {
-    verifyAdmin(req);
-  } catch (err) {
-    return res.status(403).json({ error: "Akses ditolak. Hanya admin." });
-  }
+  try { verifyAdmin(req); }
+  catch (err) { return res.status(403).json({ error: "Akses ditolak. Hanya admin." }); }
 
-  // ── GET: ambil semua data dari Sheets ─────────────────────────────
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+  // ── GET ───────────────────────────────────────────────────────────
   if (req.method === "GET") {
     try {
       const csvUrl = process.env.GS_URL;
       if (!csvUrl) return res.status(400).json({ error: "GS_URL belum dikonfigurasi" });
       const data = await fetchFromSheets(csvUrl);
-      // Tambah field _rowIndex (nomor baris di sheet, mulai 2 karena baris 1 header)
       data.forEach((r, i) => { r._rowIndex = i + 2; });
       return res.status(200).json({ success: true, data, total: data.length });
     } catch (err) {
@@ -82,44 +76,63 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ── PUT: edit laporan (kirim ke Apps Script) ───────────────────────
+  // ── PUT: edit di Sheets + Supabase ────────────────────────────────
   if (req.method === "PUT") {
     try {
       const { rowIndex, data: rowData } = req.body || {};
       if (!rowIndex) return res.status(400).json({ error: "rowIndex wajib diisi" });
+
+      // Update di Google Sheets
       const result = await sendToAppsScript("edit", { rowIndex, data: rowData });
-      // Juga update di Supabase jika ada id
-      if (rowData && rowData.id && process.env.SUPABASE_URL) {
-        try {
-          const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+      // Sync ke Supabase — cari by teknisi+tanggal+waktu karena sheets tidak punya id
+      try {
+        const teknisi = rowData["Teknisi"] || rowData.teknisi;
+        const tanggal = rowData["Tanggal"] || rowData.tanggal;
+        const waktu   = (rowData["Waktu"] || rowData.waktu || "").substring(0, 5);
+
+        const { data: existing } = await supabase.from("laporan")
+          .select("id").eq("teknisi", teknisi).eq("tanggal", tanggal)
+          .ilike("waktu", waktu + "%").limit(1);
+
+        if (existing && existing.length > 0) {
           await supabase.from("laporan").update({
             jenis_kegiatan: rowData["Jenis Kegiatan"] || rowData.jenis_kegiatan,
-            tanggal: rowData["Tanggal"] || rowData.tanggal,
-            waktu: rowData["Waktu"] || rowData.waktu,
-            nama_client: rowData["Nama Client"] || rowData.nama_client,
-            catatan: rowData["Catatan"] || rowData.catatan,
-          }).eq("id", rowData.id);
-        } catch (e) { /* Supabase optional */ }
-      }
+            nama_client:    rowData["Nama Client"]    || rowData.nama_client,
+            tempat:         rowData["Tempat"]         || rowData.tempat,
+            estimasi:       rowData["Estimasi"]       || rowData.estimasi,
+            catatan:        rowData["Catatan"]        || rowData.catatan,
+          }).eq("id", existing[0].id);
+        }
+      } catch (e) { console.warn("Supabase sync skip:", e.message); }
+
       return res.status(200).json({ success: true, result });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
   }
 
-  // ── DELETE: hapus laporan ──────────────────────────────────────────
+  // ── DELETE: hapus di Sheets + Supabase ───────────────────────────
   if (req.method === "DELETE") {
     try {
-      const { rowIndex, id } = req.body || {};
+      const { rowIndex, teknisi, tanggal, waktu } = req.body || {};
       if (!rowIndex) return res.status(400).json({ error: "rowIndex wajib diisi" });
+
+      // Hapus di Google Sheets
       const result = await sendToAppsScript("delete", { rowIndex });
-      // Juga hapus di Supabase jika ada id
-      if (id && process.env.SUPABASE_URL) {
-        try {
-          const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-          await supabase.from("laporan").delete().eq("id", id);
-        } catch (e) { /* Supabase optional */ }
-      }
+
+      // Hapus di Supabase by teknisi+tanggal+waktu
+      try {
+        if (teknisi && tanggal) {
+          const w = (waktu || "").substring(0, 5);
+          const { data: existing } = await supabase.from("laporan")
+            .select("id").eq("teknisi", teknisi).eq("tanggal", tanggal)
+            .ilike("waktu", w + "%").limit(1);
+          if (existing && existing.length > 0)
+            await supabase.from("laporan").delete().eq("id", existing[0].id);
+        }
+      } catch (e) { console.warn("Supabase delete skip:", e.message); }
+
       return res.status(200).json({ success: true, result });
     } catch (err) {
       return res.status(500).json({ error: err.message });

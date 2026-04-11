@@ -256,6 +256,18 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .btn-dl-range:hover{border-color:var(--adm);background:var(--adml);transform:translateY(-2px)}
 .btn-dl-all{width:100%;padding:13px;background:linear-gradient(135deg,var(--adm),#3949ab);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
 .btn-dl-all:hover{opacity:.9;transform:translateY(-1px)}
+
+/* PROFIL EDIT */
+.profil-avatar{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.5);background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;overflow:hidden;cursor:pointer;position:relative}
+.profil-avatar img{width:100%;height:100%;object-fit:cover}
+.profil-avatar-edit{position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid #fff}
+.btn-profil-edit{width:100%;padding:11px;border:1.5px solid var(--bd);border-radius:var(--rads);background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:var(--p);cursor:pointer;margin-top:8px;transition:all .2s}
+.btn-profil-edit:hover{background:var(--pl)}
+.edit-profil-form{background:#fff;border-radius:var(--rad);padding:18px;border:1px solid var(--bd);box-shadow:var(--sh);margin-bottom:12px}
+
+/* JENIS KEGIATAN PILIHAN (tanpa default checked) */
+.jenis-fields{margin-top:0}
+.field-hint{font-size:11px;color:var(--t3);background:var(--s2);padding:6px 10px;border-radius:8px;margin-bottom:10px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -450,52 +462,97 @@ function renderLap() {
   document.getElementById('con').innerHTML = `
     <div class="fcard" style="margin-bottom:0">
       <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:3px">Buat Laporan Kegiatan</div>
-      <div style="font-size:12px;color:var(--t2);margin-bottom:16px">Isi semua field wajib sebelum submit</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:16px">Pilih jenis kegiatan terlebih dahulu</div>
       <div class="fsec">Jenis Kegiatan</div>
       <div class="kgrid">
-        <div><input type="radio" name="jenis" id="j1" value="Pemasangan Baru" class="kr" checked><label for="j1" class="kl"><span class="ke">📶</span><span class="kt">Pemasangan Baru</span></label></div>
-        <div><input type="radio" name="jenis" id="j2" value="Perbaikan" class="kr"><label for="j2" class="kl"><span class="ke">🔧</span><span class="kt">Perbaikan</span></label></div>
-        <div><input type="radio" name="jenis" id="j3" value="Pemeliharaan" class="kr"><label for="j3" class="kl"><span class="ke">🛡️</span><span class="kt">Pemeliharaan</span></label></div>
+        <div><input type="radio" name="jenis" id="j1" value="Pemasangan Baru" class="kr" onchange="onJenisChange()"><label for="j1" class="kl"><span class="ke">📶</span><span class="kt">Pemasangan Baru</span></label></div>
+        <div><input type="radio" name="jenis" id="j2" value="Perbaikan"       class="kr" onchange="onJenisChange()"><label for="j2" class="kl"><span class="ke">🔧</span><span class="kt">Perbaikan</span></label></div>
+        <div><input type="radio" name="jenis" id="j3" value="Pemeliharaan"    class="kr" onchange="onJenisChange()"><label for="j3" class="kl"><span class="ke">🛡️</span><span class="kt">Pemeliharaan</span></label></div>
       </div>
-      <div class="fsec">Waktu & Tanggal</div>
-      <div class="frow">
-        <div class="fg2"><label class="flbl">Tanggal <span class="req">*</span></label><input type="date" class="fi" id="fTgl" value="${d}"></div>
-        <div class="fg2"><label class="flbl">Waktu <span class="req">*</span></label><input type="time" class="fi" id="fWkt" value="${t}"></div>
-      </div>
-      <div class="fsec">Data Client & Catatan</div>
-      <div class="fg2"><label class="flbl">Nama Client <span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:4px;background:#E2E8F0;color:var(--t3)">Opsional</span></label><input type="text" class="fi" id="fCli" placeholder="Nama client / pelanggan"></div>
-      <div class="fg2"><label class="flbl">Catatan Kegiatan <span class="req">*</span></label><textarea class="fi" id="fCat" rows="3" placeholder="Deskripsi kegiatan..." style="resize:vertical"></textarea></div>
-      <div class="fsec">Dokumentasi Foto</div>
-      <div class="fg2">
-        <label class="flbl">Foto Dokumentasi <span class="req">*</span></label>
-        <div class="upl" id="uplZone">
-          <input type="file" id="fFoto" accept="image/*,.heic,.heif,.webp,.bmp,.tiff,.tif" onchange="handleUpl(this)" style="display:none">
-<input type="file" id="fKamera" accept="image/*" capture="environment" onchange="handleUpl(this)" style="display:none">
-<div class="upl-ico">📷</div>
-<div class="upl-t" id="uplTxt">Tap untuk pilih foto</div>
-<div class="upl-s">JPG, PNG, HEIC, WEBP, dll · Maks 5MB</div>
-<div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
-  <button type="button" onclick="event.stopPropagation();document.getElementById('fFoto').click()" 
-    style="padding:7px 14px;border:1.5px solid var(--p);border-radius:8px;background:var(--pl);color:var(--p);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
-    Pilih File
-  </button>
-  <button type="button" onclick="event.stopPropagation();document.getElementById('fKamera').click()" 
-    style="padding:7px 14px;border:1.5px solid var(--p);border-radius:8px;background:var(--p);color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
-    Buka Kamera
-  </button>
-</div>
-<img id="prevImg" class="prev">
+
+      <div id="jenisFields" style="display:none">
+        <div class="fsec">Waktu & Tanggal</div>
+        <div class="frow">
+          <div class="fg2"><label class="flbl">Tanggal <span class="req">*</span></label><input type="date" class="fi" id="fTgl" value="${d}"></div>
+          <div class="fg2"><label class="flbl">Waktu <span class="req">*</span></label><input type="time" class="fi" id="fWkt" value="${t}"></div>
         </div>
+        <div class="fg2">
+          <label class="flbl">Estimasi Pengerjaan <span class="req">*</span></label>
+          <div style="display:flex;gap:8px">
+            <input type="number" class="fi" id="fEstVal" placeholder="Contoh: 30" min="1" style="flex:1">
+            <select class="fi" id="fEstUnit" style="width:90px">
+              <option value="menit">Menit</option>
+              <option value="jam">Jam</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fsec">Data Kegiatan</div>
+        <div class="fg2" id="fieldNamaClient">
+          <label class="flbl" id="lblNamaClient">Nama Client <span class="req">*</span></label>
+          <input type="text" class="fi" id="fCli" placeholder="Nama client / pelanggan">
+        </div>
+        <div class="fg2" id="fieldTempat" style="display:none">
+          <label class="flbl">Tempat <span class="req">*</span></label>
+          <input type="text" class="fi" id="fTempat" placeholder="Lokasi / alamat kegiatan">
+        </div>
+        <div class="fg2">
+          <label class="flbl">Catatan Kegiatan <span class="req">*</span></label>
+          <textarea class="fi" id="fCat" rows="3" placeholder="Deskripsi kegiatan yang dilakukan..." style="resize:vertical"></textarea>
+        </div>
+
+        <div class="fsec">Dokumentasi Foto</div>
+        <div class="fg2">
+          <label class="flbl">Foto Dokumentasi <span class="req">*</span></label>
+          <div class="upl" id="uplZone">
+            <input type="file" id="fFoto" accept="image/*,.heic,.heif,.webp,.bmp,.tiff,.tif" onchange="handleUpl(this)" style="display:none">
+            <input type="file" id="fKamera" accept="image/*" capture="environment" onchange="handleUpl(this)" style="display:none">
+            <div class="upl-ico">📷</div>
+            <div class="upl-t" id="uplTxt">Tap untuk pilih foto</div>
+            <div class="upl-s">JPG, PNG, HEIC, WEBP, dll · Maks 10MB</div>
+            <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
+              <button type="button" onclick="event.stopPropagation();document.getElementById('fFoto').click()"
+                style="padding:7px 14px;border:1.5px solid var(--p);border-radius:8px;background:var(--pl);color:var(--p);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
+                🖼️ Pilih File
+              </button>
+              <button type="button" onclick="event.stopPropagation();document.getElementById('fKamera').click()"
+                style="padding:7px 14px;border:1.5px solid var(--p);border-radius:8px;background:var(--p);color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
+                📸 Buka Kamera
+              </button>
+            </div>
+            <img id="prevImg" class="prev">
+          </div>
+        </div>
+        <button class="btn-sub" id="btnSub" onclick="submitLap()">📤 Kirim Laporan</button>
       </div>
-      <button class="btn-sub" id="btnSub" onclick="submitLap()">📤 Kirim Laporan</button>
     </div>`;
+}
+
+// Tampilkan/sembunyikan kolom sesuai jenis kegiatan
+function onJenisChange() {
+  const jenis = document.querySelector('input[name="jenis"]:checked')?.value;
+  if (!jenis) return;
+  document.getElementById('jenisFields').style.display = 'block';
+  const fieldTempat     = document.getElementById('fieldTempat');
+  const fieldNamaClient = document.getElementById('fieldNamaClient');
+  const lblNamaClient   = document.getElementById('lblNamaClient');
+  if (jenis === 'Pemasangan Baru') {
+    fieldTempat.style.display = 'none';
+    fieldNamaClient.style.display = 'block';
+    lblNamaClient.innerHTML = 'Nama Client <span class="req">*</span>';
+    document.getElementById('fTempat').value = '';
+  } else {
+    // Perbaikan / Pemeliharaan
+    fieldTempat.style.display = 'block';
+    fieldNamaClient.style.display = 'block';
+    lblNamaClient.innerHTML = 'Nama Client <span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:4px;background:#E2E8F0;color:var(--t3)">Opsional</span>';
+  }
 }
 
 // ================= RIWAYAT =================
 async function renderRiw() {
   const con = document.getElementById('con');
   con.innerHTML = `<div style="background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:12px;border:1px solid var(--bd);box-shadow:var(--sh)"><div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">Riwayat Laporan</div><div style="font-size:12px;color:var(--t2)">Mengambil data...</div></div><div class="loading-row"><div class="spin"></div><span>Mengambil data...</span></div>`;
-
   let rows = [];
   try {
     const res = await fetch('/api/laporan', { headers: { Authorization: 'Bearer ' + token } });
@@ -504,17 +561,13 @@ async function renderRiw() {
   } catch (e) {
     rows = JSON.parse(localStorage.getItem('tc_lap_cache') || '[]');
   }
-
   riwayatData = rows.filter(r => (r.teknisi || r['Teknisi'] || '') === currentUser.username);
   const mine = riwayatData;
-
   const header = `<div style="background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:12px;border:1px solid var(--bd);box-shadow:var(--sh)"><div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">Riwayat Laporan</div><div style="font-size:12px;color:var(--t2)">${mine.length} laporan ditemukan</div></div>`;
-
   if (mine.length === 0) {
     con.innerHTML = header + `<div class="empty"><div class="ei">📂</div><div class="et">Belum ada laporan</div><div class="es">Buat laporan kegiatan pertama</div></div>`;
     return;
   }
-
   con.innerHTML = header + mine.map((r, idx) => {
     const j = r.jenis_kegiatan || r['Jenis Kegiatan'] || '-';
     const tgl = r.tanggal || r['Tanggal'] || '-';
@@ -536,14 +589,16 @@ async function renderRiw() {
 function showDetail(idx) {
   const r = riwayatData[idx];
   if (!r) { toast('Data tidak ditemukan', 'err'); return; }
-  const j   = r.jenis_kegiatan || r['Jenis Kegiatan'] || '-';
-  const tgl = r.tanggal || r['Tanggal'] || '-';
-  const wkt = (r.waktu || r['Waktu'] || '-').substring(0, 5);
-  const cli = r.nama_client || r['Nama Client'] || '-';
-  const cat = r.catatan || r['Catatan'] || '-';
+  const j       = r.jenis_kegiatan || r['Jenis Kegiatan'] || '-';
+  const tgl     = r.tanggal || r['Tanggal'] || '-';
+  const wkt     = (r.waktu || r['Waktu'] || '-').substring(0, 5);
+  const cli     = r.nama_client || r['Nama Client'] || '-';
+  const tempat  = r.tempat || r['Tempat'] || '-';
+  const estimasi= r.estimasi || r['Estimasi'] || '-';
+  const cat     = r.catatan || r['Catatan'] || '-';
   const fotoUrl = r.foto || r['URL Foto'] || '';
-  const ts  = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '-';
-  const ico = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : '🛡️';
+  const ts      = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '-';
+  const ico     = j === 'Pemasangan Baru' ? '📶' : j === 'Perbaikan' ? '🔧' : '🛡️';
 
   document.getElementById('con').innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
@@ -553,10 +608,10 @@ function showDetail(idx) {
     <div style="background:linear-gradient(135deg,#481414,#f93f3f);border-radius:18px;padding:22px;margin-bottom:14px;color:#fff">
       <div style="font-size:11px;opacity:.6;margin-bottom:4px">Jenis Kegiatan</div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;margin-bottom:12px">${ico} ${j}</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <div style="background:rgba(255,255,255,.15);padding:6px 12px;border-radius:50px;font-size:12px">📅 ${tgl}</div>
-        <div style="background:rgba(255,255,255,.15);padding:6px 12px;border-radius:50px;font-size:12px">🕐 ${wkt}</div>
-        <div style="background:rgba(255,255,255,.15);padding:6px 12px;border-radius:50px;font-size:12px">👤 ${currentUser.username}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="background:rgba(255,255,255,.15);padding:5px 10px;border-radius:50px;font-size:11px">📅 ${tgl}</div>
+        <div style="background:rgba(255,255,255,.15);padding:5px 10px;border-radius:50px;font-size:11px">🕐 ${wkt}</div>
+        ${estimasi !== '-' ? `<div style="background:rgba(255,255,255,.15);padding:5px 10px;border-radius:50px;font-size:11px">⏱️ ${estimasi}</div>` : ''}
       </div>
     </div>
     ${fotoUrl && fotoUrl !== '-' && fotoUrl !== '' ? `
@@ -567,12 +622,14 @@ function showDetail(idx) {
     </div>` : `<div class="fcard" style="margin-bottom:12px;padding:14px"><div class="fsec">Foto Dokumentasi</div><div style="text-align:center;padding:20px;color:var(--t3)"><div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:13px">Tidak ada foto</div></div></div>`}
     <div class="fcard" style="margin-bottom:12px;padding:14px">
       <div class="fsec">Informasi Kegiatan</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Teknisi</span><span style="font-size:13px;font-weight:600">${currentUser.username}</span></div>
-        <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Tanggal</span><span style="font-size:13px;font-weight:600">${tgl}</span></div>
-        <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Waktu</span><span style="font-size:13px;font-weight:600">${wkt}</span></div>
-        <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Nama Client</span><span style="font-size:13px;font-weight:600">${cli !== '-' ? cli : 'Tidak ada'}</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--t3)">Dibuat</span><span style="font-size:12px;color:var(--t2)">${ts}</span></div>
+      <div style="display:flex;flex-direction:column;gap:0">
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Teknisi</span><span style="font-size:13px;font-weight:600">${currentUser.username}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Tanggal</span><span style="font-size:13px;font-weight:600">${tgl}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Waktu</span><span style="font-size:13px;font-weight:600">${wkt}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Estimasi</span><span style="font-size:13px;font-weight:600">${estimasi !== '-' ? estimasi : '—'}</span></div>
+        ${cli !== '-' ? `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Nama Client</span><span style="font-size:13px;font-weight:600">${cli}</span></div>` : ''}
+        ${tempat !== '-' ? `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Tempat</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${tempat}</span></div>` : ''}
+        <div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-size:12px;color:var(--t3)">Dibuat</span><span style="font-size:12px;color:var(--t2)">${ts}</span></div>
       </div>
     </div>
     <div class="fcard" style="padding:14px"><div class="fsec">Catatan Kegiatan</div><div style="font-size:13px;color:var(--t2);line-height:1.7;white-space:pre-wrap">${cat}</div></div>`;
@@ -586,29 +643,135 @@ async function renderProfil() {
     if (res.ok) { const data = await res.json(); localStorage.setItem('tc_lap_cache', JSON.stringify(data)); mine = data; }
   } catch (e) {}
 
+  // Ambil profil terkini dari server
+  try {
+    const res = await fetch('/api/profile', { headers: { Authorization: 'Bearer ' + token } });
+    if (res.ok) { const d = await res.json(); currentUser = { ...currentUser, ...d.user }; localStorage.setItem('tc_user', JSON.stringify(currentUser)); }
+  } catch (e) {}
+
+  const avatarHtml = currentUser.foto_profil
+    ? `<img src="${currentUser.foto_profil}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.5);margin:0 auto 10px;display:block">`
+    : `<div style="width:80px;height:80px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:28px;font-weight:700;border:3px solid rgba(255,255,255,.35)">${currentUser.username.substring(0,2).toUpperCase()}</div>`;
+
   document.getElementById('con').innerHTML = `
-    <div style="background:linear-gradient(135deg,#481414,#f93f3f);border-radius:18px;padding:24px;text-align:center;color:#fff;margin-bottom:14px">
-      <div style="width:64px;height:64px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:24px;font-weight:700;border:3px solid rgba(255,255,255,.35)">${currentUser.username.substring(0,2).toUpperCase()}</div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700">${currentUser.username}</div>
+    <div style="background:linear-gradient(135deg,#481414,#f93f3f);border-radius:18px;padding:24px;text-align:center;color:#fff;margin-bottom:14px;position:relative">
+      <div style="position:relative;display:inline-block;margin-bottom:10px">
+        ${avatarHtml}
+        <button onclick="triggerAvatarUpload()" style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:var(--p);border:2px solid #fff;border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0">✏️</button>
+        <input type="file" id="avatarInput" accept="image/*,.heic,.heif" style="display:none" onchange="handleAvatarUpload(this)">
+      </div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700">${currentUser.nama_lengkap || currentUser.username}</div>
+      ${currentUser.nama_lengkap ? `<div style="font-size:12px;opacity:.7;margin-top:2px">@${currentUser.username}</div>` : ''}
       <div style="font-size:12px;opacity:.7;margin-top:3px">📱 ${currentUser.phone || '-'}</div>
       <div style="font-size:12px;opacity:.6;margin-top:2px">📧 ${currentUser.email || '-'}</div>
       <div style="font-size:11px;opacity:.5;margin-top:3px">Bergabung: ${new Date(currentUser.created_at).toLocaleDateString('id-ID',{year:'numeric',month:'long',day:'numeric'})}</div>
     </div>
+
     <div class="sgrid" style="margin-bottom:14px">
       <div class="sc"><div class="sc-n">${mine.length}</div><div class="sc-l">Total Laporan</div></div>
       <div class="sc"><div class="sc-n">${mine.filter(r=>r.jenis_kegiatan==='Pemasangan Baru').length}</div><div class="sc-l">Pemasangan</div></div>
       <div class="sc"><div class="sc-n">${mine.filter(r=>r.jenis_kegiatan==='Perbaikan').length}</div><div class="sc-l">Perbaikan</div></div>
       <div class="sc"><div class="sc-n">${mine.filter(r=>r.jenis_kegiatan==='Pemeliharaan').length}</div><div class="sc-l">Pemeliharaan</div></div>
     </div>
+
+    <!-- Form Edit Profil -->
+    <div class="fcard" id="editProfilCard" style="display:none">
+      <div class="fsec">✏️ Edit Profil</div>
+      <div class="fg2">
+        <label class="flbl">Nama Lengkap</label>
+        <input type="text" class="fi" id="editNamaLengkap" value="${currentUser.nama_lengkap || ''}" placeholder="Nama lengkap kamu">
+      </div>
+      <div class="fg2">
+        <label class="flbl">Username <span class="req">*</span></label>
+        <input type="text" class="fi" id="editUsername" value="${currentUser.username}" placeholder="Username unik">
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">Hanya huruf, angka, underscore (3-20 karakter)</div>
+      </div>
+      <div class="fg2">
+        <label class="flbl">Nomor HP</label>
+        <input type="tel" class="fi" id="editPhone" value="${currentUser.phone || ''}" placeholder="08xxxxxxxxxx">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button onclick="document.getElementById('editProfilCard').style.display='none'" style="flex:1;padding:11px;border:1.5px solid var(--bd);border-radius:var(--rads);background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer">Batal</button>
+        <button onclick="simpanProfil()" id="btnSimpanProfil" style="flex:2;padding:11px;border:none;border-radius:var(--rads);background:var(--p);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">💾 Simpan Perubahan</button>
+      </div>
+    </div>
+
     <div class="fcard">
-      <div class="fsec">Status Koneksi</div>
-      <div class="status-row ${cfg.supaUrl?'status-ok':'status-no'}"><span>🗄️ Supabase</span><span>${cfg.supaUrl?'✅ Terhubung':'⚠️ Belum'}</span></div>
+      <div class="fsec">Pengaturan Akun</div>
+      <button onclick="toggleEditProfil()" class="btn-profil-edit">✏️ Edit Profil & Nama</button>
+      <div class="status-row ${cfg.supaUrl?'status-ok':'status-no'}" style="margin-top:12px"><span>🗄️ Supabase</span><span>${cfg.supaUrl?'✅ Terhubung':'⚠️ Belum'}</span></div>
       <div class="status-row ${cfg.gsUrl?'status-ok':'status-no'}" style="margin-top:6px"><span>📊 Google Sheets</span><span>${cfg.gsUrl?'✅ Terhubung':'⚠️ Belum'}</span></div>
       <button onclick="document.getElementById('setupModal').classList.add('show')" style="width:100%;padding:11px;border:1.5px solid var(--bd);border-radius:var(--rads);background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:var(--p);cursor:pointer;margin-top:12px">⚙️ Ubah Konfigurasi</button>
       <button onclick="doLogout()" style="width:100%;padding:11px;border:1.5px solid #FFCCCC;border-radius:var(--rads);background:#FFF0F0;font-family:inherit;font-size:13px;font-weight:600;color:var(--r);cursor:pointer;margin-top:8px">🚪 Keluar</button>
     </div>`;
 }
 
+function toggleEditProfil() {
+  const card = document.getElementById('editProfilCard');
+  card.style.display = card.style.display === 'none' ? 'block' : 'none';
+  if (card.style.display === 'block') card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function triggerAvatarUpload() {
+  document.getElementById('avatarInput')?.click();
+}
+
+async function handleAvatarUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('Foto maks 5MB', 'err'); return; }
+  showLoading('Mengupload foto profil...');
+  try {
+    const dataUrl = await readAsDataURL(file);
+    const compressed = await compressImage(dataUrl, 400, 0.85);
+    const res = await fetch('/api/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ foto_profil: compressed })
+    });
+    const data = await res.json();
+    hideLoading();
+    if (!res.ok) { toast(data.error || 'Gagal upload foto', 'err'); return; }
+    currentUser = { ...currentUser, ...data.user };
+    localStorage.setItem('tc_user', JSON.stringify(currentUser));
+    toast('✅ Foto profil berhasil diperbarui!', 'ok');
+    renderProfil();
+    updateNav();
+  } catch (e) {
+    hideLoading(); toast('Gagal upload foto', 'err');
+  }
+  input.value = '';
+}
+
+async function simpanProfil() {
+  const btn = document.getElementById('btnSimpanProfil');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Menyimpan...'; }
+
+  const nama_lengkap = document.getElementById('editNamaLengkap')?.value?.trim();
+  const username     = document.getElementById('editUsername')?.value?.trim();
+  const phone        = document.getElementById('editPhone')?.value?.trim();
+
+  if (!username) { toast('Username wajib diisi', 'err'); if(btn){btn.disabled=false;btn.textContent='💾 Simpan Perubahan';} return; }
+
+  try {
+    const res = await fetch('/api/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ username, nama_lengkap, phone })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || 'Gagal simpan', 'err'); return; }
+    currentUser = { ...currentUser, ...data.user };
+    localStorage.setItem('tc_user', JSON.stringify(currentUser));
+    toast('✅ Profil berhasil diperbarui!', 'ok');
+    renderProfil();
+    updateNav();
+  } catch (e) {
+    toast('Gagal konek ke server', 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Simpan Perubahan'; }
+  }
+}
 
 // ================= ADMIN PANEL =================
 
@@ -930,7 +1093,13 @@ async function doDeleteLaporan(idx) {
     const res = await fetch('/api/admin', {
       method: 'DELETE',
       headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
-      body: JSON.stringify({ rowIndex: r._rowIndex, id: r.id || null })
+      body: JSON.stringify({
+        rowIndex: r._rowIndex,
+        id: r.id || null,
+        teknisi: r['Teknisi'] || r.teknisi || '',
+        tanggal: r['Tanggal'] || r.tanggal || '',
+        waktu:   r['Waktu']   || r.waktu   || ''
+      })
     });
     const data = await res.json();
     if (!res.ok) { toast(data.error||'Gagal hapus','err'); return; }
@@ -1235,8 +1404,20 @@ async function doRegister() {
 
 function updateNav() {
   if (!currentUser) return;
+  const displayName = currentUser.nama_lengkap || currentUser.username;
   document.getElementById('navUn').textContent = currentUser.username;
-  document.getElementById('navAv').textContent = currentUser.username.substring(0, 2).toUpperCase();
+  const av = document.getElementById('navAv');
+  if (av) {
+    if (currentUser.foto_profil) {
+      av.innerHTML = `<img src="${currentUser.foto_profil}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">`;
+      av.style.background = 'transparent';
+      av.style.padding = '0';
+    } else {
+      av.innerHTML = displayName.substring(0, 2).toUpperCase();
+      av.style.background = '';
+      av.style.padding = '';
+    }
+  }
 }
 
 function doLogout() {
@@ -1348,12 +1529,27 @@ async function submitLap() {
   const jenis   = document.querySelector('input[name="jenis"]:checked')?.value;
   const tanggal = document.getElementById('fTgl')?.value;
   const waktu   = document.getElementById('fWkt')?.value;
+  const estVal  = document.getElementById('fEstVal')?.value?.trim();
+  const estUnit = document.getElementById('fEstUnit')?.value || 'menit';
   const client  = document.getElementById('fCli')?.value?.trim() || '-';
+  const tempat  = document.getElementById('fTempat')?.value?.trim() || '-';
   const catatan = document.getElementById('fCat')?.value?.trim();
 
-  if (!jenis || !tanggal || !waktu || !catatan) { toast('Isi semua field yang wajib!', 'err'); return; }
+  if (!jenis) { toast('Pilih jenis kegiatan!', 'err'); return; }
+  if (!tanggal || !waktu) { toast('Tanggal dan waktu wajib diisi!', 'err'); return; }
+  if (!estVal || isNaN(estVal) || Number(estVal) < 1) { toast('Estimasi pengerjaan wajib diisi!', 'err'); return; }
+  if (!catatan) { toast('Catatan kegiatan wajib diisi!', 'err'); return; }
+
+  // Validasi kolom per jenis
+  if (jenis === 'Pemasangan Baru' && !client.trim()) {
+    toast('Nama client wajib untuk Pemasangan Baru!', 'err'); return;
+  }
+  if ((jenis === 'Perbaikan' || jenis === 'Pemeliharaan') && (!tempat || tempat === '-')) {
+    toast('Tempat wajib untuk ' + jenis + '!', 'err'); return;
+  }
   if (!uploadedB64) { toast('Foto dokumentasi wajib diupload!', 'err'); return; }
 
+  const estimasi = `${estVal} ${estUnit}`;
   const btn = document.getElementById('btnSub');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Mengirim...'; }
   showLoading('Menyimpan laporan...');
@@ -1362,14 +1558,14 @@ async function submitLap() {
     const res = await fetch('/api/laporan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ jenis_kegiatan: jenis, tanggal, waktu, nama_client: client, catatan, foto: uploadedB64 })
+      body: JSON.stringify({ jenis_kegiatan: jenis, tanggal, waktu, nama_client: client, tempat, estimasi, catatan, foto: uploadedB64 })
     });
     const data = await res.json();
     hideLoading();
     if (!res.ok) { toast('Gagal: ' + (data.error || 'Server error'), 'err'); return; }
     toast('✅ Laporan berhasil dikirim!', 'ok');
     const cache = JSON.parse(localStorage.getItem('tc_lap_cache') || '[]');
-    cache.unshift({ teknisi: currentUser.username, jenis_kegiatan: jenis, tanggal, waktu, nama_client: client, catatan, created_at: new Date().toISOString() });
+    cache.unshift({ teknisi: currentUser.username, jenis_kegiatan: jenis, tanggal, waktu, nama_client: client, tempat, estimasi, catatan, created_at: new Date().toISOString() });
     localStorage.setItem('tc_lap_cache', JSON.stringify(cache));
     setTimeout(() => goTab('riw', document.getElementById('ni-riw')), 1500);
   } catch (err) {
@@ -1378,6 +1574,7 @@ async function submitLap() {
     if (btn) { btn.disabled = false; btn.textContent = '📤 Kirim Laporan'; }
   }
 }
+
 
 // ================= SETUP MODAL =================
 function switchTab(tab) {
