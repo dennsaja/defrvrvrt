@@ -24,9 +24,9 @@ module.exports = async function handler(req, res) {
   if (req.method === "GET") {
     try {
       const { data, error } = await supabase
-        .from("users")
-        .select("id, username, nama_lengkap, email, phone, role, verified, foto_profil, foto_cover, created_at")
-        .order("created_at", { ascending: false });
+         .from("users")
+         .select("id, username, nama_lengkap, email, phone, role, foto_profil, created_at")
+         .order("created_at", { ascending: false });
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data || []);
     } catch (err) {
