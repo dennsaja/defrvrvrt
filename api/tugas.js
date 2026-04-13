@@ -238,7 +238,16 @@ module.exports = async function handler(req, res) {
 
           if (!existingLap || existingLap.length === 0) {
             const now = new Date();
-            await supabase.from("laporan").insert([{
+
+            // Ambil phone teknisi untuk dikirim ke Sheets
+            let hpTeknisi = "-";
+            try {
+              const { data: userRow } = await supabase.from("users")
+                .select("phone").eq("username", penyelesai).single();
+              if (userRow?.phone) hpTeknisi = userRow.phone;
+            } catch(e) {}
+
+            const lapRow = {
               teknisi:        penyelesai,
               jenis_kegiatan: data.jenis_kegiatan,
               tanggal:        now.toISOString().split("T")[0],
@@ -250,7 +259,33 @@ module.exports = async function handler(req, res) {
               foto:           data.foto        || null,
               sumber:         "tugas",
               tugas_id:       id,
-            }]);
+            };
+
+            await supabase.from("laporan").insert([lapRow]);
+
+            // Kirim ke Google Sheets supaya muncul di riwayat admin
+            const gsUrl = process.env.GS_SCRIPT_URL;
+            if (gsUrl && !gsUrl.includes("GANTI")) {
+              try {
+                await fetch(gsUrl, {
+                  method: "POST",
+                  headers: { "Content-Type": "text/plain" },
+                  body: JSON.stringify({
+                    teknisi:        penyelesai,
+                    hp:             hpTeknisi,
+                    jenis_kegiatan: data.jenis_kegiatan,
+                    tanggal:        lapRow.tanggal,
+                    waktu:          lapRow.waktu,
+                    nama_client:    data.nama_client || "-",
+                    tempat:         data.tempat      || "-",
+                    estimasi:       "-",
+                    catatan:        data.catatan     || "-",
+                    foto_url:       data.foto        || "-",
+                  }),
+                  signal: AbortSignal.timeout(10000),
+                });
+              } catch(e) { console.warn("Kirim Sheets dari tugas gagal:", e.message); }
+            }
           }
 
           // Broadcast selesai: hapus dari tabel tugas (tidak perlu muncul lagi)
