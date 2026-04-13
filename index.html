@@ -1116,24 +1116,31 @@ async function renderTugasTeknisi() {
     }
 
     const renderTugasCard = (t, showBtn) => {
-      const ico = t.jenis_kegiatan === 'Pemasangan Baru' ? '' : t.jenis_kegiatan === 'Instalasi CCTV' ? '' : t.jenis_kegiatan === 'Perbaikan' ? '' : '';
+      const ico = t.jenis_kegiatan === 'Pemasangan Baru' ? '📶' : t.jenis_kegiatan === 'Instalasi CCTV' ? '📷' : t.jenis_kegiatan === 'Perbaikan' ? '🔧' : '🛡️';
       const tgl = new Date(t.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+      const isBcast = t.is_broadcast === true;
+      const statusLabel = t.status === 'selesai' ? '✅ Selesai' : t.status === 'proses' ? '🔄 Proses' : '⏳ Pending';
+      const statusCls   = t.status === 'selesai' ? 'tugas-selesai' : 'tugas-pending';
       return `<div class="tugas-card ${t.status === 'selesai' ? 'status-selesai' : ''}">
         <div class="tugas-card-hdr">
           <div>
             <div class="tugas-jenis">${ico} ${t.jenis_kegiatan}</div>
-            <div class="tugas-date">Diberikan ${tgl}</div>
+            <div class="tugas-date">📅 Diberikan ${tgl}</div>
           </div>
-          <span class="tugas-badge ${t.status === 'selesai' ? 'tugas-selesai' : 'tugas-pending'}">${t.status === 'selesai' ? ' Selesai' : ' Pending'}</span>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            ${isBcast ? '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:50px;background:#E8EAF6;color:var(--adm)">📢 BROADCAST</span>' : ''}
+            <span class="tugas-badge ${statusCls}">${statusLabel}</span>
+          </div>
         </div>
         <div class="tugas-meta">
-          ${t.nama_client && t.nama_client !== '-' ? `<span class="tugas-chip"> ${t.nama_client}</span>` : ''}
-          ${t.tempat && t.tempat !== '-' ? `<span class="tugas-chip"> ${t.tempat}</span>` : ''}
-          ${t.link_maps ? `<a href="${t.link_maps}" target="_blank" class="tugas-chip" style="color:var(--adm);text-decoration:none">️ Buka Maps</a>` : ''}
+          ${t.nama_client && t.nama_client !== '-' ? `<span class="tugas-chip">👤 ${t.nama_client}</span>` : ''}
+          ${t.tempat && t.tempat !== '-' ? `<span class="tugas-chip">📍 ${t.tempat}</span>` : ''}
+          ${t.link_maps ? `<a href="${t.link_maps}" target="_blank" class="tugas-chip" style="color:var(--adm);text-decoration:none">🗺️ Buka Maps</a>` : ''}
         </div>
-        ${t.barang && t.barang !== '-' ? `<div class="tugas-barang"><strong>Barang dibawa:</strong> ${t.barang}</div>` : ''}
-        <div class="tugas-catatan">${t.catatan}</div>
-        ${showBtn ? `<button class="btn-selesai" onclick="tandaiTugasSelesai('${t.id}',this)">Tandai Selesai</button>` : ''}
+        ${t.barang && t.barang !== '-' ? `<div class="tugas-barang">🧰 <strong>Barang dibawa:</strong> ${t.barang}</div>` : ''}
+        <div class="tugas-catatan">📝 ${t.catatan}</div>
+        ${t.foto ? `<div style="margin-bottom:10px"><img src="${t.foto}" onclick="window.open('${t.foto}','_blank')" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;cursor:pointer" onerror="this.parentElement.style.display='none'"><div style="font-size:10px;color:var(--t3);text-align:center;margin-top:4px">Tap untuk buka penuh</div></div>` : ''}
+        ${showBtn ? `<button class="btn-selesai" onclick="tandaiTugasSelesai('${t.id}',this)">✅ Tandai Selesai</button>` : ''}
       </div>`;
     };
 
@@ -1153,7 +1160,7 @@ async function renderTugasTeknisi() {
 }
 
 async function tandaiTugasSelesai(id, btn) {
-  if (btn) { btn.disabled = true; btn.textContent = ' Memproses...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Memproses...'; }
   try {
     const res = await fetch('/api/tugas', {
       method: 'PUT',
@@ -1161,12 +1168,17 @@ async function tandaiTugasSelesai(id, btn) {
       body: JSON.stringify({ id, status: 'selesai' })
     });
     const data = await res.json();
-    if (!res.ok) { toast(data.error || 'Gagal update', 'err'); if(btn){btn.disabled=false;btn.textContent=' Tandai Selesai';} return; }
-    toast(' Tugas ditandai selesai!', 'ok');
+    if (!res.ok) { toast(data.error || 'Gagal update', 'err'); if(btn){btn.disabled=false;btn.textContent='✅ Tandai Selesai';} return; }
+    // broadcast_deleted = true berarti tugas sudah dihapus dari DB setelah diselesaikan
+    if (data.broadcast_deleted) {
+      toast('✅ Tugas selesai! Tersimpan di riwayat laporan kamu.', 'ok');
+    } else {
+      toast('✅ Tugas ditandai selesai!', 'ok');
+    }
     renderTugasTeknisi();
   } catch(e) {
     toast('Gagal konek server', 'err');
-    if(btn){btn.disabled=false;btn.textContent=' Tandai Selesai';}
+    if(btn){btn.disabled=false;btn.textContent='✅ Tandai Selesai';}
   }
 }
 
@@ -1557,10 +1569,11 @@ async function renderAdmin() {
   con.innerHTML = `<div class="loading-row"><div class="spin" style="border-top-color:var(--adm)"></div><span>Memuat data...</span></div>`;
 
   try {
-    // Ambil laporan & daftar teknisi dari Supabase sekaligus
-    const [resAdmin, resTugas] = await Promise.all([
+    // Ambil laporan, daftar teknisi (dari users), dan tugas sekaligus
+    const [resAdmin, resTugas, resUsers] = await Promise.all([
       fetch('/api/admin', { headers: { Authorization: 'Bearer ' + token } }),
-      fetch('/api/tugas',  { headers: { Authorization: 'Bearer ' + token } })
+      fetch('/api/tugas',  { headers: { Authorization: 'Bearer ' + token } }),
+      fetch('/api/users',  { headers: { Authorization: 'Bearer ' + token } })
     ]);
     const resultAdmin = await resAdmin.json();
     if (!resAdmin.ok) {
@@ -1571,8 +1584,18 @@ async function renderAdmin() {
     adminFiltered = [...adminData];
     if (resTugas.ok) tugasData = await resTugas.json();
 
-    // Kumpulkan daftar teknisi dari laporan
-    tugasTeknisiList = [...new Set(adminData.map(r => r['Teknisi'] || r.teknisi || '').filter(Boolean))].sort();
+    // ✅ FIX: ambil daftar teknisi dari tabel users (bukan dari laporan)
+    // sehingga teknisi baru yang belum punya laporan pun muncul
+    if (resUsers.ok) {
+      const usersData = await resUsers.json();
+      tugasTeknisiList = usersData
+        .filter(u => u.role !== 'admin')
+        .map(u => u.username)
+        .sort();
+    } else {
+      // Fallback: dari laporan
+      tugasTeknisiList = [...new Set(adminData.map(r => r['Teknisi'] || r.teknisi || '').filter(Boolean))].sort();
+    }
 
     renderAdminTabs();
   } catch (e) {
@@ -1880,25 +1903,33 @@ function renderAdminTugasPanel() {
   const selesai = tugasData.filter(t => t.status === 'selesai');
 
   const renderTugasRow = (t, i) => {
-    const ico = t.jenis_kegiatan === 'Pemasangan Baru' ? '<svg class="ic" style="color:var(--blue)"><use href="#ic-wifi"/></svg>' : t.jenis_kegiatan === 'Instalasi CCTV' ? '' : t.jenis_kegiatan === 'Perbaikan' ? '<svg class="ic" style="color:var(--orange)"><use href="#ic-tool"/></svg>' : '<svg class="ic" style="color:var(--green)"><use href="#ic-shield"/></svg>';
+    const ico = t.jenis_kegiatan === 'Pemasangan Baru' ? '📶' : t.jenis_kegiatan === 'Instalasi CCTV' ? '📷' : t.jenis_kegiatan === 'Perbaikan' ? '🔧' : '🛡️';
     const tgl = new Date(t.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
     const statusBadge = t.status === 'selesai'
-      ? `<span class="tugas-badge tugas-selesai"> Selesai</span>`
-      : `<span class="tugas-badge tugas-pending"> Pending</span>`;
+      ? `<span class="tugas-badge tugas-selesai">✅ Selesai</span>`
+      : t.status === 'proses'
+      ? `<span class="tugas-badge" style="background:#E8F4FF;color:#0066FF">🔄 Proses</span>`
+      : `<span class="tugas-badge tugas-pending">⏳ Pending</span>`;
+    const targetLabel = t.is_broadcast
+      ? `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px;background:#E8EAF6;color:var(--adm)">📢 Broadcast</span>`
+      : `<span style="font-size:12px;font-weight:600;color:var(--adm)">${t.teknisi}</span>`;
+    const fotoThumb = t.foto
+      ? `<img src="${t.foto}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="window.open('${t.foto}','_blank')" onerror="this.style.display='none'">`
+      : `<span style="font-size:11px;color:var(--t3)">—</span>`;
     return `<tr>
       <td style="color:var(--t3);font-size:11px">${i+1}</td>
       <td style="white-space:nowrap;font-size:12px;color:var(--t3)">${tgl}</td>
-      <td style="font-weight:700;color:var(--adm)">${t.teknisi}</td>
+      <td>${targetLabel}</td>
       <td><span class="adm-badge" style="background:#E8EAF6;color:var(--adm)">${ico} ${t.jenis_kegiatan}</span></td>
-      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.nama_client||''}">${t.nama_client||'-'}</td>
-      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.tempat||''}">${t.tempat||'-'}</td>
+      <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.nama_client||''}">${t.nama_client||'-'}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--t2)" title="${t.catatan}">${t.catatan}</td>
+      <td>${fotoThumb}</td>
       <td>${statusBadge}</td>
       <td>
         <div style="display:flex;gap:4px">
-          <button onclick="showTugasDetail('${t.id}')" class="btn-act btn-view" title="Lihat Detail"><svg class=\"ic-sm\"><use href=\"#ic-eye\"/></svg></button>
-          <button onclick="showEditTugasModal('${t.id}')" class="btn-act btn-edit" title="Edit"><svg class=\"ic-sm\"><use href=\"#ic-edit\"/></svg></button>
-          <button onclick="confirmDeleteTugas('${t.id}')" class="btn-act btn-del" title="Hapus"><svg class=\"ic-sm\"><use href=\"#ic-trash\"/></svg></button>
+          <button onclick="showTugasDetail('${t.id}')" class="btn-act btn-view" title="Lihat Detail">👁️</button>
+          <button onclick="showEditTugasModal('${t.id}')" class="btn-act btn-edit" title="Edit">✏️</button>
+          <button onclick="confirmDeleteTugas('${t.id}')" class="btn-act btn-del" title="Hapus">🗑️</button>
         </div>
       </td>
     </tr>`;
@@ -1921,11 +1952,11 @@ function renderAdminTugasPanel() {
           <thead><tr>
             <th style="width:36px">No</th>
             <th>Dibuat</th>
-            <th>Teknisi</th>
+            <th>Target</th>
             <th>Jenis</th>
             <th>Client</th>
-            <th>Tempat</th>
             <th>Catatan</th>
+            <th>Foto</th>
             <th>Status</th>
             <th style="width:90px">Aksi</th>
           </tr></thead>
@@ -1938,32 +1969,42 @@ function renderAdminTugasPanel() {
 function showTugasDetail(id) {
   const t = tugasData.find(x => x.id === id);
   if (!t) return;
-  const ico = t.jenis_kegiatan === 'Pemasangan Baru' ? '<svg class="ic" style="color:var(--blue)"><use href="#ic-wifi"/></svg>' : t.jenis_kegiatan === 'Instalasi CCTV' ? '' : t.jenis_kegiatan === 'Perbaikan' ? '<svg class="ic" style="color:var(--orange)"><use href="#ic-tool"/></svg>' : '<svg class="ic" style="color:var(--green)"><use href="#ic-shield"/></svg>';
+  const ico = t.jenis_kegiatan === 'Pemasangan Baru' ? '📶' : t.jenis_kegiatan === 'Instalasi CCTV' ? '📷' : t.jenis_kegiatan === 'Perbaikan' ? '🔧' : '🛡️';
   const tgl = new Date(t.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+  const targetInfo = t.is_broadcast
+    ? '<span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">📢 Broadcast Semua</span>'
+    : `<span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">👤 ${t.teknisi}</span>`;
+  const statusBadge = t.status === 'selesai'
+    ? '<span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">✅ Selesai</span>'
+    : t.status === 'proses'
+    ? '<span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">🔄 Proses</span>'
+    : '<span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">⏳ Pending</span>';
   openModal(`
-    <div style="background:var(--adm);border-radius:14px;padding:20px;color:#fff;margin-bottom:16px">
+    <div style="background:linear-gradient(135deg,var(--adm),#3949ab);border-radius:14px;padding:20px;color:#fff;margin-bottom:16px">
       <div style="font-size:11px;opacity:.7;margin-bottom:4px">Detail Tugas</div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;margin-bottom:10px">${ico} ${t.jenis_kegiatan}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px"> ${t.teknisi}</span>
-        <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px"> ${tgl}</span>
-        <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">${t.status === 'selesai' ? ' Selesai' : ' Pending'}</span>
+        ${targetInfo}
+        <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px">📅 ${tgl}</span>
+        ${statusBadge}
       </div>
     </div>
+    ${t.foto ? `<div style="margin-bottom:14px"><div class="modal-sec">📷 Foto Pendukung</div><img src="${t.foto}" onclick="window.open('${t.foto}','_blank')" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;cursor:pointer" onerror="this.parentElement.style.display='none'"><div style="font-size:11px;color:var(--t3);text-align:center;margin-top:5px">Tap untuk buka penuh</div></div>` : ''}
     <div class="modal-card">
-      <div class="modal-sec"> Info Tugas</div>
+      <div class="modal-sec">📋 Info Tugas</div>
       ${t.nama_client && t.nama_client !== '-' ? `<div class="modal-row"><span class="modal-lbl">Nama Client</span><span class="modal-val">${t.nama_client}</span></div>` : ''}
       ${t.tempat && t.tempat !== '-' ? `<div class="modal-row"><span class="modal-lbl">Tempat</span><span class="modal-val">${t.tempat}</span></div>` : ''}
-      ${t.link_maps ? `<div class="modal-row"><span class="modal-lbl">Link Maps</span><a href="${t.link_maps}" target="_blank" style="font-size:13px;font-weight:600;color:var(--adm)">️ Buka Maps</a></div>` : ''}
+      ${t.link_maps ? `<div class="modal-row"><span class="modal-lbl">Link Maps</span><a href="${t.link_maps}" target="_blank" style="font-size:13px;font-weight:600;color:var(--adm)">🗺️ Buka Maps</a></div>` : ''}
       ${t.barang && t.barang !== '-' ? `<div class="modal-row"><span class="modal-lbl">Barang Dibawa</span><span class="modal-val">${t.barang}</span></div>` : ''}
+      ${t.diselesaikan_oleh ? `<div class="modal-row"><span class="modal-lbl">Diselesaikan oleh</span><span class="modal-val" style="color:var(--g);font-weight:700">${t.diselesaikan_oleh}</span></div>` : ''}
     </div>
     <div class="modal-card">
-      <div class="modal-sec"> Catatan</div>
+      <div class="modal-sec">📝 Catatan</div>
       <div style="font-size:13px;color:var(--t2);line-height:1.7;white-space:pre-wrap">${t.catatan}</div>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px">
-      <button onclick="closeModal();showEditTugasModal('${t.id}')" class="btn-modal-action" style="background:var(--adm);flex:1">Edit</button>
-      <button onclick="closeModal();confirmDeleteTugas('${t.id}')" class="btn-modal-action" style="background:var(--r);flex:1">Hapus</button>
+      <button onclick="closeModal();showEditTugasModal('${t.id}')" class="btn-modal-action" style="background:var(--adm);flex:1">✏️ Edit</button>
+      <button onclick="closeModal();confirmDeleteTugas('${t.id}')" class="btn-modal-action" style="background:var(--r);flex:1">🗑️ Hapus</button>
     </div>
   `);
 }
@@ -1974,28 +2015,45 @@ function showBuatTugasModal() {
     : `<option value="">— Belum ada teknisi terdaftar —</option>`;
 
   openModal(`
-    <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px"> Beri Tugas ke Teknisi</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px">📌 Beri Tugas ke Teknisi</div>
     <div style="font-size:12px;color:var(--t3);margin-bottom:16px">Tugas akan muncul di halaman teknisi yang dituju</div>
 
-    <div class="modal-sec">Teknisi <span style="color:var(--r)">*</span></div>
-    <select id="tugasTeknisi" class="fi" style="margin-bottom:12px">
-      <option value="">— Pilih Teknisi —</option>
-      ${opts}
-    </select>
+    <div class="modal-sec">Target Penugasan <span style="color:var(--r)">*</span></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--adm);background:var(--adml);border-radius:var(--rads);cursor:pointer" id="lbl-spesifik" onclick="setTugasTarget('spesifik')">
+        <input type="radio" name="tugasTarget" value="spesifik" checked style="accent-color:var(--adm)">
+        <div><div style="font-size:13px;font-weight:600">👤 Pilih Teknisi</div><div style="font-size:10px;color:var(--t3)">Hanya satu teknisi</div></div>
+      </label>
+      <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid #E2E8F0;background:#fff;border-radius:var(--rads);cursor:pointer" id="lbl-broadcast" onclick="setTugasTarget('broadcast')">
+        <input type="radio" name="tugasTarget" value="broadcast" style="accent-color:var(--adm)">
+        <div><div style="font-size:13px;font-weight:600">📢 Broadcast Semua</div><div style="font-size:10px;color:var(--t3)">Semua teknisi lihat</div></div>
+      </label>
+    </div>
+
+    <div id="tugasTeknisiWrap" style="margin-bottom:12px">
+      <div class="modal-sec">Pilih Teknisi <span style="color:var(--r)">*</span></div>
+      <select id="tugasTeknisi" class="fi">
+        <option value="">— Pilih Teknisi —</option>
+        ${opts}
+      </select>
+    </div>
+
+    <div id="tugasBroadcastInfo" style="display:none;background:#E8EAF6;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--adm)">
+      📢 Tugas ini akan muncul ke <strong>semua teknisi</strong>. Siapa pun yang pertama menyelesaikan akan tercatat di riwayat laporan mereka, lalu tugas dihapus otomatis dari semua teknisi.
+    </div>
 
     <div class="modal-sec">Jenis Kegiatan <span style="color:var(--r)">*</span></div>
     <select id="tugasJenis" class="fi" style="margin-bottom:12px" onchange="onTugasJenisChange()">
       <option value="">— Pilih Jenis —</option>
-      <option value="Pemasangan Baru"> Pemasangan Baru</option>
-      <option value="Instalasi CCTV"> Instalasi CCTV</option>
-      <option value="Perbaikan"> Perbaikan</option>
-      <option value="Pemeliharaan"> Pemeliharaan</option>
+      <option value="Pemasangan Baru">📶 Pemasangan Baru</option>
+      <option value="Instalasi CCTV">📷 Instalasi CCTV</option>
+      <option value="Perbaikan">🔧 Perbaikan</option>
+      <option value="Pemeliharaan">🛡️ Pemeliharaan</option>
     </select>
 
     <div id="tugasClientTempat" style="display:none">
       <div class="modal-sec">Nama Client</div>
       <input type="text" id="tugasClient" class="fi" placeholder="Nama client / pelanggan" style="margin-bottom:12px">
-
       <div class="modal-sec">Tempat / Lokasi</div>
       <input type="text" id="tugasTempat" class="fi" placeholder="Alamat / lokasi kegiatan" style="margin-bottom:12px">
     </div>
@@ -2007,66 +2065,116 @@ function showBuatTugasModal() {
     <input type="text" id="tugasBarang" class="fi" placeholder="Cth: Kabel UTP 10m, Switch 8 port" style="margin-bottom:12px">
 
     <div class="modal-sec">Catatan <span style="color:var(--r)">*</span></div>
-    <textarea id="tugasCatatan" class="fi" rows="4" placeholder="Deskripsi pekerjaan yang harus dilakukan..." style="resize:vertical;margin-bottom:16px"></textarea>
+    <textarea id="tugasCatatan" class="fi" rows="3" placeholder="Deskripsi pekerjaan yang harus dilakukan..." style="resize:vertical;margin-bottom:12px"></textarea>
+
+    <div class="modal-sec">Foto / Dokumen Pendukung <span style="color:var(--r)">*</span></div>
+    <div class="upl" id="tugasUplZone" onclick="document.getElementById('tugasFotoInput').click()" style="margin-bottom:16px">
+      <input type="file" id="tugasFotoInput" accept="image/*,.heic,.heif,.webp,.bmp" style="display:none" onchange="handleTugasFoto(this)">
+      <div class="upl-ico">📎</div>
+      <div class="upl-t" id="tugasUplTxt">Tap untuk pilih foto / dokumen</div>
+      <div class="upl-s">JPG, PNG, HEIC, WEBP · Maks 10MB</div>
+      <img id="tugasFotoPreview" class="prev" style="display:none;max-height:120px">
+    </div>
 
     <div style="display:flex;gap:8px">
       <button onclick="closeModal()" class="btn-modal-action" style="background:#E2E8F0;color:var(--t);flex:1">Batal</button>
-      <button onclick="doKirimTugas()" class="btn-modal-action" id="btnKirimTugas" style="background:var(--adm);flex:2"> Kirim Tugas</button>
+      <button onclick="doKirimTugas()" class="btn-modal-action" id="btnKirimTugas" style="background:var(--adm);flex:2">📌 Kirim Tugas</button>
     </div>
   `);
+  window._tugasFotoB64 = null;
+}
+
+function setTugasTarget(mode) {
+  const wrap = document.getElementById('tugasTeknisiWrap');
+  const info  = document.getElementById('tugasBroadcastInfo');
+  const lblS  = document.getElementById('lbl-spesifik');
+  const lblB  = document.getElementById('lbl-broadcast');
+  if (mode === 'broadcast') {
+    wrap.style.display    = 'none';
+    info.style.display    = 'block';
+    lblB.style.border     = '1.5px solid var(--adm)';
+    lblB.style.background = 'var(--adml)';
+    lblS.style.border     = '1.5px solid #E2E8F0';
+    lblS.style.background = '#fff';
+  } else {
+    wrap.style.display    = 'block';
+    info.style.display    = 'none';
+    lblS.style.border     = '1.5px solid var(--adm)';
+    lblS.style.background = 'var(--adml)';
+    lblB.style.border     = '1.5px solid #E2E8F0';
+    lblB.style.background = '#fff';
+  }
+}
+
+function handleTugasFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { toast('File terlalu besar (maks 10MB)', 'err'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._tugasFotoB64 = e.target.result;
+    const prev = document.getElementById('tugasFotoPreview');
+    const txt  = document.getElementById('tugasUplTxt');
+    const zone = document.getElementById('tugasUplZone');
+    if (prev) { prev.src = e.target.result; prev.style.display = 'block'; }
+    if (txt)  txt.textContent = '\u2705 ' + file.name;
+    if (zone) zone.classList.add('ok');
+  };
+  reader.readAsDataURL(file);
 }
 
 function onTugasJenisChange() {
   const jenis = document.getElementById('tugasJenis')?.value;
   const block = document.getElementById('tugasClientTempat');
   if (!block) return;
-  // Pemeliharaan selalu tampilkan client+tempat, yang lain juga tampilkan
   block.style.display = jenis ? 'block' : 'none';
 }
 
 async function doKirimTugas() {
-  const btn      = document.getElementById('btnKirimTugas');
-  const teknisi  = document.getElementById('tugasTeknisi')?.value?.trim();
-  const jenis    = document.getElementById('tugasJenis')?.value;
-  const client   = document.getElementById('tugasClient')?.value?.trim();
-  const tempat   = document.getElementById('tugasTempat')?.value?.trim();
-  const maps     = document.getElementById('tugasMaps')?.value?.trim();
-  const barang   = document.getElementById('tugasBarang')?.value?.trim();
-  const catatan  = document.getElementById('tugasCatatan')?.value?.trim();
+  const btn        = document.getElementById('btnKirimTugas');
+  const isBroadcast = document.querySelector('input[name="tugasTarget"]:checked')?.value === 'broadcast';
+  const teknisi    = isBroadcast ? null : document.getElementById('tugasTeknisi')?.value?.trim();
+  const jenis      = document.getElementById('tugasJenis')?.value;
+  const client     = document.getElementById('tugasClient')?.value?.trim();
+  const tempat     = document.getElementById('tugasTempat')?.value?.trim();
+  const maps       = document.getElementById('tugasMaps')?.value?.trim();
+  const barang     = document.getElementById('tugasBarang')?.value?.trim();
+  const catatan    = document.getElementById('tugasCatatan')?.value?.trim();
+  const foto       = window._tugasFotoB64 || null;
 
-  if (!teknisi) { toast('Pilih teknisi dulu!','err'); return; }
-  if (!jenis)   { toast('Pilih jenis kegiatan!','err'); return; }
-  if (!catatan) { toast('Catatan wajib diisi!','err'); return; }
+  if (!isBroadcast && !teknisi) { toast('Pilih teknisi dulu!', 'err'); return; }
+  if (!jenis)   { toast('Pilih jenis kegiatan!', 'err'); return; }
+  if (!catatan) { toast('Catatan wajib diisi!', 'err'); return; }
+  if (!foto)    { toast('Foto / dokumen wajib dilampirkan!', 'err'); return; }
 
-  if (btn) { btn.disabled=true; btn.textContent='Mengirim...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Mengirim...'; }
   try {
     const res = await fetch('/api/tugas', {
       method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({
-        teknisi,
+        teknisi:        teknisi || null,
+        is_broadcast:   isBroadcast,
         jenis_kegiatan: jenis,
-        nama_client: client || '-',
-        tempat: tempat || '-',
-        link_maps: maps || null,
-        barang: barang || '-',
-        catatan
+        nama_client:    client || '-',
+        tempat:         tempat || '-',
+        link_maps:      maps   || null,
+        barang:         barang || '-',
+        catatan,
+        foto
       })
     });
     const data = await res.json();
-    if (!res.ok) { toast(data.error||'Gagal kirim','err'); return; }
+    if (!res.ok) { toast(data.error || 'Gagal kirim', 'err'); return; }
     tugasData.unshift(data.data);
     closeModal();
-    toast(' Tugas berhasil dikirim!','ok');
-    renderAdminTugasPanel();
-    // Update badge di tab
+    toast(isBroadcast ? '📢 Tugas broadcast dikirim ke semua teknisi!' : '✅ Tugas berhasil dikirim!', 'ok');
     renderAdminTabs();
-    // Render ulang tab content
     renderAdminTabContent();
   } catch(e) {
-    toast('Gagal konek server','err');
+    toast('Gagal konek server', 'err');
   } finally {
-    if (btn) { btn.disabled=false; btn.textContent=' Kirim Tugas'; }
+    if (btn) { btn.disabled = false; btn.textContent = '📌 Kirim Tugas'; }
   }
 }
 
