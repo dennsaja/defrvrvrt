@@ -2,6 +2,7 @@
   "version": 2,
   "builds": [
     { "src": "api/*.js", "use": "@vercel/node" },
+    { "src": "sw.js",    "use": "@vercel/static" },
     { "src": "index.html", "use": "@vercel/static" }
   ],
   "routes": [
@@ -16,6 +17,8 @@
     { "src": "/api/tugas",          "dest": "/api/tugas.js" },
     { "src": "/api/profile",        "dest": "/api/profile.js" },
     { "src": "/api/users",          "dest": "/api/users.js" },
+    { "src": "/api/push",           "dest": "/api/push.js" },
+    { "src": "/sw.js",              "dest": "/sw.js" },
     { "src": "/(.*)",               "dest": "/index.html" }
   ]
 }

@@ -1,5 +1,6 @@
 const { createClient } = require("@supabase/supabase-js");
 const jwt = require("jsonwebtoken");
+const { sendPushToUser, sendPushToRole } = require("./push");
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -137,6 +138,25 @@ module.exports = async function handler(req, res) {
 
       const { data, error } = await supabase.from("tugas").insert([payload]).select().single();
       if (error) return res.status(500).json({ error: "Gagal menyimpan tugas: " + error.message });
+
+      // Kirim push notification
+      try {
+        const pushPayload = {
+          title: "Tugas Baru",
+          body:  `${data.jenis_kegiatan}${data.tempat && data.tempat !== "-" ? " - " + data.tempat : ""}`,
+          tag:   "tugas-baru",
+          url:   "/",
+          requireInteraction: true,
+        };
+        if (isBroadcast) {
+          await sendPushToRole(supabase, "teknisi", pushPayload);
+        } else {
+          await sendPushToUser(supabase, data.teknisi, pushPayload);
+        }
+      } catch (pushErr) {
+        console.warn("Push notif gagal:", pushErr.message);
+      }
+
       return res.status(200).json({ success: true, data });
     } catch (err) {
       return res.status(403).json({ error: err.message });
@@ -228,8 +248,29 @@ module.exports = async function handler(req, res) {
           // Broadcast selesai: hapus dari tabel tugas (tidak perlu muncul lagi)
           if (data.is_broadcast) {
             await supabase.from("tugas").delete().eq("id", id);
+            // Push ke admin: ada tugas broadcast yang selesai
+            try {
+              await sendPushToRole(supabase, "admin", {
+                title: "Tugas Selesai",
+                body:  `${data.jenis_kegiatan} diselesaikan oleh ${updateData.diselesaikan_oleh || existing.teknisi}`,
+                tag:   "tugas-selesai-" + id,
+                url:   "/",
+              });
+            } catch(e) { console.warn("Push admin gagal:", e.message); }
             return res.status(200).json({ success: true, data, broadcast_deleted: true });
           }
+        }
+
+        // Push ke admin jika tugas spesifik selesai
+        if (goingSelesai && !data.is_broadcast) {
+          try {
+            await sendPushToRole(supabase, "admin", {
+              title: "Tugas Selesai",
+              body:  `${data.jenis_kegiatan} oleh ${existing.teknisi} telah selesai`,
+              tag:   "tugas-selesai-" + id,
+              url:   "/",
+            });
+          } catch(e) { console.warn("Push admin gagal:", e.message); }
         }
 
         return res.status(200).json({ success: true, data });

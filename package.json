@@ -5,6 +5,7 @@
     "@supabase/supabase-js": "^2.45.0",
     "jsonwebtoken": "^9.0.2",
     "bcryptjs": "^2.4.3",
-    "nodemailer": "^6.9.14"
+    "nodemailer": "^6.9.14",
+    "web-push": "^3.6.7"
   }
 }
