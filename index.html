@@ -818,6 +818,130 @@ body{
 .detail-row:last-child{border-bottom:none}
 .detail-lbl{font-size:12px;color:var(--txt3)}
 .detail-val{font-size:13px;font-weight:600;color:var(--txt);text-align:right;max-width:60%}
+
+/* ── ADMIN TAB BAR ─────────────────────────────────────────────── */
+.adm-tab-bar{
+  display:flex;gap:6px;
+  background:var(--white);
+  border-radius:var(--r12);
+  padding:6px;
+  margin-bottom:20px;
+  border:1px solid var(--border);
+  box-shadow:var(--sh-sm);
+}
+.adm-tab{
+  flex:1;padding:9px 12px;
+  border:none;border-radius:var(--r8);
+  font-family:inherit;font-size:12px;font-weight:600;
+  cursor:pointer;color:var(--txt3);background:transparent;
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px;
+  white-space:nowrap;
+}
+.adm-tab:hover{background:var(--bg);color:var(--txt2)}
+.adm-tab.active{
+  background:var(--adm);color:#fff;
+  box-shadow:0 2px 8px rgba(26,26,46,.25);
+}
+.adm-tab.active span{background:rgba(255,255,255,.25)!important;color:#fff!important}
+.adm-refresh{
+  display:flex;align-items:center;gap:5px;
+  padding:8px 14px;
+  border:1.5px solid var(--border);border-radius:var(--r8);
+  background:var(--white);color:var(--txt2);
+  font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;
+  transition:all .2s;
+}
+.adm-refresh:hover{border-color:var(--adm);color:var(--adm);background:var(--adm-l)}
+
+/* ── NOTIF TUGAS (Dashboard + Bottomnav) ───────────────────────── */
+.notif-tugas{
+  background:linear-gradient(135deg,var(--adm),#3949ab);
+  border-radius:var(--r16);padding:16px 18px;margin-bottom:14px;
+  cursor:pointer;color:#fff;
+  box-shadow:0 4px 18px rgba(26,26,46,.22);
+  display:flex;flex-direction:column;gap:4px;
+  border:none;transition:transform .15s,box-shadow .15s;
+}
+.notif-tugas:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(26,26,46,.28)}
+.notif-badge{
+  display:inline-flex;align-items:center;
+  background:var(--red);color:#fff;
+  font-size:11px;font-weight:700;
+  padding:3px 10px;border-radius:var(--r-pill);
+  width:fit-content;margin-bottom:4px;
+  box-shadow:0 2px 6px rgba(255,0,37,.4);
+  letter-spacing:.03em;
+}
+.notif-ttl{font-size:14px;font-weight:700;line-height:1.3}
+.notif-sub{font-size:11px;opacity:.75;margin-top:2px}
+
+/* ── TUGAS CARD ────────────────────────────────────────────────── */
+.tugas-card{
+  background:var(--white);border-radius:var(--r16);
+  padding:16px;border:1px solid var(--border);
+  box-shadow:var(--sh-sm);margin-bottom:12px;
+  transition:transform .15s,box-shadow .15s;
+}
+.tugas-card:hover{transform:translateY(-1px);box-shadow:var(--sh)}
+.tugas-card.status-selesai{opacity:.75;border-color:var(--border)}
+.tugas-card-hdr{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:10px;gap:10px;
+}
+.tugas-jenis{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:3px;line-height:1.3}
+.tugas-date{font-size:11px;color:var(--txt4)}
+.tugas-badge{
+  font-size:10px;font-weight:700;padding:4px 10px;
+  border-radius:var(--r-pill);flex-shrink:0;letter-spacing:.03em;
+}
+.tugas-pending{background:var(--orange-l);color:#7A4A00}
+.tugas-selesai{background:var(--green-l);color:#1A7A35}
+.tugas-meta{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;
+}
+.tugas-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;color:var(--txt3);
+  background:var(--bg);padding:4px 10px;
+  border-radius:var(--r-pill);border:1px solid var(--border);
+  font-weight:500;
+}
+.tugas-barang{
+  font-size:12px;color:var(--txt3);
+  background:var(--blue-l);
+  padding:8px 12px;border-radius:var(--r8);
+  margin-bottom:10px;border:1px solid rgba(0,122,255,.12);
+}
+.tugas-catatan{
+  font-size:13px;color:var(--txt2);
+  background:var(--bg);padding:10px 12px;
+  border-radius:var(--r8);line-height:1.6;
+  margin-bottom:12px;border:1px solid var(--border);
+}
+
+/* ── BTN SELESAI (MyTelkomsel style) ───────────────────────────── */
+.btn-selesai{
+  width:100%;padding:13px;
+  background:linear-gradient(135deg,var(--adm),#3949ab);
+  color:#fff;border:none;
+  border-radius:var(--r12);font-family:inherit;
+  font-size:13px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 4px 14px rgba(26,26,46,.25);
+  transition:all .2s;letter-spacing:.02em;
+}
+.btn-selesai:hover{opacity:.9;transform:translateY(-1px)}
+.btn-selesai:disabled{background:var(--border2);color:var(--txt4);cursor:not-allowed;transform:none;box-shadow:none}
+
+/* Upload foto submit tugas */
+.tugas-foto-zone{
+  border:2px dashed var(--border2);border-radius:var(--r12);
+  padding:18px 14px;text-align:center;cursor:pointer;
+  background:var(--bg);transition:all .2s;margin-bottom:12px;
+}
+.tugas-foto-zone:hover,.tugas-foto-zone.ok{border-color:var(--adm);background:var(--adm-l)}
+.tugas-foto-zone input{display:none}
+.tugas-foto-preview{width:100%;max-height:140px;object-fit:cover;border-radius:var(--r8);margin-top:8px;display:none}
 </style>
 </head>
 <body>
@@ -959,9 +1083,11 @@ body{
       <span class="ni-lbl">Riwayat</span>
     </button>
     <button class="ni" id="ni-tugas" onclick="goTab('tugas',this)" style="position:relative">
-      <div class="ni-ico"><svg class="ic"><use href="#ic-task"/></svg></div>
+      <div class="ni-ico" style="position:relative">
+        <svg class="ic"><use href="#ic-task"/></svg>
+        <span id="tugas-dot" style="display:none;position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;background:var(--red);border-radius:var(--r-pill);border:2px solid #fff;font-size:9px;font-weight:700;color:#fff;line-height:12px;text-align:center;box-sizing:border-box">0</span>
+      </div>
       <span class="ni-lbl">Tugas</span>
-      <span id="tugas-dot" style="display:none;position:absolute;top:8px;right:calc(50% - 14px);width:7px;height:7px;background:var(--red);border-radius:50%;border:2px solid #fff"></span>
     </button>
     <button class="ni" id="ni-profil" onclick="goTab('profil',this)">
       <div class="ni-ico"><svg class="ic"><use href="#ic-user"/></svg></div>
@@ -1050,7 +1176,14 @@ async function renderDash() {
 
   // Update dot indicator di nav
   const dot = document.getElementById('tugas-dot');
-  if (dot) dot.style.display = tugasPending.length > 0 ? 'block' : 'none';
+  if (dot) {
+    if (tugasPending.length > 0) {
+      dot.style.display = 'block';
+      dot.textContent = tugasPending.length > 9 ? '9+' : tugasPending.length;
+    } else {
+      dot.style.display = 'none';
+    }
+  }
 
   const todayN = mine.filter(r => r.tanggal === today).length;
   const baru   = mine.filter(r => r.jenis_kegiatan === 'Pemasangan Baru').length;
@@ -1063,7 +1196,6 @@ async function renderDash() {
       <div class="notif-ttl">Kamu punya tugas yang belum selesai</div>
       <div class="notif-sub">Tap untuk lihat detail tugas →</div>
     </div>` : '';
-
   con.innerHTML = `
     <div class="dh">
       <div class="dh-greet">${greet()} </div>
@@ -1103,7 +1235,14 @@ async function renderTugasTeknisi() {
 
     // Update dot
     const dot = document.getElementById('tugas-dot');
-    if (dot) dot.style.display = pending.length > 0 ? 'block' : 'none';
+    if (dot) {
+      if (pending.length > 0) {
+        dot.style.display = 'block';
+        dot.textContent = pending.length > 9 ? '9+' : pending.length;
+      } else {
+        dot.style.display = 'none';
+      }
+    }
 
     const header = `<div style="background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:12px;border:1px solid var(--bd);box-shadow:var(--sh)">
       <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700"> Tugas dari Admin</div>
@@ -1139,8 +1278,15 @@ async function renderTugasTeknisi() {
         </div>
         ${t.barang && t.barang !== '-' ? `<div class="tugas-barang">🧰 <strong>Barang dibawa:</strong> ${t.barang}</div>` : ''}
         <div class="tugas-catatan">📝 ${t.catatan}</div>
-        ${t.foto ? `<div style="margin-bottom:10px"><img src="${t.foto}" onclick="window.open('${t.foto}','_blank')" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;cursor:pointer" onerror="this.parentElement.style.display='none'"><div style="font-size:10px;color:var(--t3);text-align:center;margin-top:4px">Tap untuk buka penuh</div></div>` : ''}
-        ${showBtn ? `<button class="btn-selesai" onclick="tandaiTugasSelesai('${t.id}',this)">✅ Tandai Selesai</button>` : ''}
+        ${t.foto ? `<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--txt4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">📎 Foto Referensi</div><img src="${t.foto}" onclick="window.open('${t.foto}','_blank')" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;cursor:pointer" onerror="this.parentElement.style.display='none'"><div style="font-size:10px;color:var(--txt4);text-align:center;margin-top:4px">Tap untuk buka penuh</div></div>` : ''}
+        ${showBtn ? `
+        <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+          <div style="font-size:11px;color:var(--txt4);margin-bottom:8px;text-align:center">Upload foto bukti penyelesaian untuk submit</div>
+          <button class="btn-selesai" onclick="showSubmitFotoModal('${t.id}')">
+            <svg style="width:16px;height:16px;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Tandai Selesai + Upload Foto
+          </button>
+        </div>` : ''}
       </div>`;
     };
 
@@ -1159,17 +1305,67 @@ async function renderTugasTeknisi() {
   }
 }
 
+function showSubmitFotoModal(id) {
+  // Buat modal upload foto sebelum tandai selesai
+  const mo = document.createElement('div');
+  mo.id = 'submitFotoModal';
+  mo.className = 'mo';
+  mo.style.display = 'flex';
+  mo.innerHTML = `
+    <div class="mbox" style="max-width:420px">
+      <div style="font-size:17px;font-weight:700;margin-bottom:4px;color:var(--txt)">📷 Upload Foto Bukti</div>
+      <div style="font-size:12px;color:var(--txt3);margin-bottom:16px">Upload foto dokumentasi sebagai bukti penyelesaian tugas</div>
+      <div class="tugas-foto-zone" id="submitFotoZone" onclick="document.getElementById('submitFotoInput').click()">
+        <input type="file" id="submitFotoInput" accept="image/*,.heic,.heif,.webp" onchange="handleSubmitFoto(this)">
+        <div style="font-size:32px;margin-bottom:8px">📸</div>
+        <div style="font-size:13px;font-weight:600;color:var(--txt2);margin-bottom:3px">Tap untuk pilih foto</div>
+        <div style="font-size:11px;color:var(--txt4)">JPG, PNG, HEIC, WEBP · Maks 10MB</div>
+        <img id="submitFotoPreview" class="tugas-foto-preview">
+      </div>
+      <div style="font-size:11px;color:var(--orange);background:var(--orange-l);padding:8px 12px;border-radius:var(--r8);margin-bottom:14px;border:1px solid #FFD499">
+        ⚠️ Foto wajib diupload sebagai bukti bahwa tugas telah selesai dikerjakan
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('submitFotoModal').remove()" class="btn-modal-action" style="background:#E2E8F0;color:var(--txt);flex:1">Batal</button>
+        <button onclick="tandaiTugasSelesai('${id}',this)" id="btnKonfirmSelesai" class="btn-modal-action" style="background:linear-gradient(135deg,var(--adm),#3949ab);flex:2">
+          ✅ Konfirmasi Selesai
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(mo);
+  window._submitFotoB64 = null;
+}
+
+function handleSubmitFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { toast('File terlalu besar (maks 10MB)', 'err'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._submitFotoB64 = e.target.result;
+    const prev = document.getElementById('submitFotoPreview');
+    const zone = document.getElementById('submitFotoZone');
+    if (prev) { prev.src = e.target.result; prev.style.display = 'block'; }
+    if (zone) zone.classList.add('ok');
+  };
+  reader.readAsDataURL(file);
+}
+
 async function tandaiTugasSelesai(id, btn) {
+  const foto = window._submitFotoB64 || null;
+  if (!foto) { toast('Upload foto bukti terlebih dahulu!', 'err'); return; }
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Memproses...'; }
   try {
     const res = await fetch('/api/tugas', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ id, status: 'selesai' })
+      body: JSON.stringify({ id, status: 'selesai', foto_selesai: foto })
     });
     const data = await res.json();
-    if (!res.ok) { toast(data.error || 'Gagal update', 'err'); if(btn){btn.disabled=false;btn.textContent='✅ Tandai Selesai';} return; }
-    // broadcast_deleted = true berarti tugas sudah dihapus dari DB setelah diselesaikan
+    if (!res.ok) { toast(data.error || 'Gagal update', 'err'); if(btn){btn.disabled=false;btn.textContent='✅ Konfirmasi Selesai';} return; }
+    document.getElementById('submitFotoModal')?.remove();
+    window._submitFotoB64 = null;
     if (data.broadcast_deleted) {
       toast('✅ Tugas selesai! Tersimpan di riwayat laporan kamu.', 'ok');
     } else {
@@ -1178,7 +1374,7 @@ async function tandaiTugasSelesai(id, btn) {
     renderTugasTeknisi();
   } catch(e) {
     toast('Gagal konek server', 'err');
-    if(btn){btn.disabled=false;btn.textContent='✅ Tandai Selesai';}
+    if(btn){btn.disabled=false;btn.textContent='✅ Konfirmasi Selesai';}
   }
 }
 
@@ -1989,7 +2185,8 @@ function showTugasDetail(id) {
         ${statusBadge}
       </div>
     </div>
-    ${t.foto ? `<div style="margin-bottom:14px"><div class="modal-sec">📷 Foto Pendukung</div><img src="${t.foto}" onclick="window.open('${t.foto}','_blank')" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;cursor:pointer" onerror="this.parentElement.style.display='none'"><div style="font-size:11px;color:var(--t3);text-align:center;margin-top:5px">Tap untuk buka penuh</div></div>` : ''}
+    ${t.foto ? `<div style="margin-bottom:14px"><div class="modal-sec">📎 Foto Referensi (dari Admin)</div><img src="${t.foto}" onclick="window.open('${t.foto}','_blank')" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;cursor:pointer" onerror="this.parentElement.style.display='none'"><div style="font-size:11px;color:var(--t3);text-align:center;margin-top:5px">Tap untuk buka penuh</div></div>` : ''}
+    ${t.foto_selesai ? `<div style="margin-bottom:14px"><div class="modal-sec" style="color:var(--green)">📸 Foto Bukti (dari Teknisi)</div><img src="${t.foto_selesai}" onclick="window.open('${t.foto_selesai}','_blank')" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;cursor:pointer;border:2px solid var(--green)" onerror="this.parentElement.style.display='none'"><div style="font-size:11px;color:var(--t3);text-align:center;margin-top:5px">Tap untuk buka penuh</div></div>` : ''}
     <div class="modal-card">
       <div class="modal-sec">📋 Info Tugas</div>
       ${t.nama_client && t.nama_client !== '-' ? `<div class="modal-row"><span class="modal-lbl">Nama Client</span><span class="modal-val">${t.nama_client}</span></div>` : ''}
@@ -2067,11 +2264,11 @@ function showBuatTugasModal() {
     <div class="modal-sec">Catatan <span style="color:var(--r)">*</span></div>
     <textarea id="tugasCatatan" class="fi" rows="3" placeholder="Deskripsi pekerjaan yang harus dilakukan..." style="resize:vertical;margin-bottom:12px"></textarea>
 
-    <div class="modal-sec">Foto / Dokumen Pendukung <span style="color:var(--r)">*</span></div>
+    <div class="modal-sec">Foto / Dokumen Pendukung <span style="font-size:10px;color:var(--t3);font-weight:400">(opsional — teknisi akan upload foto saat selesai)</span></div>
     <div class="upl" id="tugasUplZone" onclick="document.getElementById('tugasFotoInput').click()" style="margin-bottom:16px">
       <input type="file" id="tugasFotoInput" accept="image/*,.heic,.heif,.webp,.bmp" style="display:none" onchange="handleTugasFoto(this)">
       <div class="upl-ico">📎</div>
-      <div class="upl-t" id="tugasUplTxt">Tap untuk pilih foto / dokumen</div>
+      <div class="upl-t" id="tugasUplTxt">Tap untuk pilih foto referensi (opsional)</div>
       <div class="upl-s">JPG, PNG, HEIC, WEBP · Maks 10MB</div>
       <img id="tugasFotoPreview" class="prev" style="display:none;max-height:120px">
     </div>
@@ -2145,7 +2342,6 @@ async function doKirimTugas() {
   if (!isBroadcast && !teknisi) { toast('Pilih teknisi dulu!', 'err'); return; }
   if (!jenis)   { toast('Pilih jenis kegiatan!', 'err'); return; }
   if (!catatan) { toast('Catatan wajib diisi!', 'err'); return; }
-  if (!foto)    { toast('Foto / dokumen wajib dilampirkan!', 'err'); return; }
 
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Mengirim...'; }
   try {
