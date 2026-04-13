@@ -35,6 +35,27 @@ function s(str, max = 500) {
 }
 
 async function uploadFotoToStorage(supabase, base64, supabaseUrl) {
+  if (!base64 || typeof base64 !== "string" || !base64.startsWith("data:image/") || !base64.includes(",")) return null;
+  if (base64.length > 14 * 1024 * 1024) return null;
+  try {
+    const mimeMatch = base64.match(/^data:(image\/[a-z]+);base64,/);
+    if (!mimeMatch) return null;
+    const mime = mimeMatch[1];
+    const ext  = mime.split("/")[1] === "png" ? "png" : "jpg";
+    const fileName = "selesai_" + Date.now() + "_" + Math.random().toString(36).slice(2) + "." + ext;
+    const buffer = Buffer.from(base64.split(",")[1], "base64");
+    const { error } = await supabase.storage
+      .from("laporan-foto")
+      .upload(fileName, buffer, { contentType: mime, upsert: false });
+    if (error) { console.warn("Upload foto_selesai error:", error.message); return null; }
+    return supabaseUrl + "/storage/v1/object/public/laporan-foto/" + fileName;
+  } catch(e) {
+    console.warn("Upload foto_selesai gagal:", e.message);
+    return null;
+  }
+}
+
+async function uploadFotoToStorage(supabase, base64, supabaseUrl) {
   if (!base64 || !base64.includes(",")) return null;
   try {
     const ext = base64.startsWith("data:image/png") ? "png" : "jpg";
@@ -175,7 +196,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "PUT") {
     try {
       const decoded = verifyToken(req);
-      const { id, status, jenis_kegiatan, nama_client, tempat, link_maps, barang, catatan } = req.body || {};
+      const { id, status, jenis_kegiatan, nama_client, tempat, link_maps, barang, catatan, foto_selesai } = req.body || {};
 
       if (!id) return res.status(400).json({ error: "id wajib diisi" });
       if (!UUID_RE.test(id)) return res.status(400).json({ error: "id tidak valid" });
@@ -213,6 +234,12 @@ module.exports = async function handler(req, res) {
         updateData.status = status;
         if (status === "selesai" && isBcast) {
           updateData.diselesaikan_oleh = decoded.username;
+        }
+
+        // Upload foto_selesai dari teknisi ke storage
+        if (status === "selesai" && foto_selesai) {
+          const fotoSelesaiUrl = await uploadFotoToStorage(supabase, foto_selesai, process.env.SUPABASE_URL);
+          if (fotoSelesaiUrl) updateData.foto_selesai = fotoSelesaiUrl;
         }
       }
 
@@ -256,7 +283,7 @@ module.exports = async function handler(req, res) {
               tempat:         data.tempat      || "-",
               estimasi:       "-",
               catatan:        data.catatan     || "-",
-              foto:           data.foto        || null,
+              foto:           data.foto_selesai || data.foto || null,
               sumber:         "tugas",
               tugas_id:       id,
             };
@@ -280,7 +307,7 @@ module.exports = async function handler(req, res) {
                     tempat:         data.tempat      || "-",
                     estimasi:       "-",
                     catatan:        data.catatan     || "-",
-                    foto_url:       data.foto        || "-",
+                    foto_url:       data.foto_selesai || data.foto || "-",
                   }),
                   signal: AbortSignal.timeout(10000),
                 });
