@@ -1142,16 +1142,8 @@ function init() {
 function showPage(p) {
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   document.getElementById('page-' + p).classList.add('active');
-  if (p === 'dashboard') {
-    updateNav();
-    goTab('dash', document.getElementById('ni-dash'));
-    // Init push setelah login berhasil
-    initPush().then(() => requestPushPermission());
-  }
-  if (p === 'admin') {
-    renderAdmin();
-    initPush().then(() => requestPushPermission());
-  }
+  if (p === 'dashboard') { updateNav(); goTab('dash', document.getElementById('ni-dash')); }
+  if (p === 'admin') renderAdmin();
 }
 
 function goTab(tab, el) {
@@ -3019,7 +3011,6 @@ function updateNav() {
 }
 
 function doLogout() {
-  unsubscribePush();
   localStorage.removeItem('token');
   localStorage.removeItem('tc_user');
   currentUser = null; token = null; riwayatData = []; adminData = []; adminFiltered = [];
@@ -3246,84 +3237,6 @@ function esc(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-// ================= WEB PUSH NOTIFICATIONS =================
-let _swReg = null;
-let _pushEndpoint = null;
-
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-}
-
-async function initPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  try {
-    _swReg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-    // Dengarkan pesan dari SW (klik notif)
-    navigator.serviceWorker.addEventListener('message', e => {
-      if (e.data && e.data.type === 'NOTIF_CLICK') {
-        // Kalau klik notif tugas, langsung buka tab tugas
-        if (currentUser && currentUser.role !== 'admin') {
-          goTab('tugas', document.getElementById('ni-tugas'));
-        }
-      }
-    });
-  } catch(e) { console.warn('SW register gagal:', e); }
-}
-
-async function requestPushPermission() {
-  if (!_swReg) return;
-  try {
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-    await subscribePush();
-  } catch(e) { console.warn('Push permission gagal:', e); }
-}
-
-async function subscribePush() {
-  if (!_swReg) return;
-  try {
-    // Ambil VAPID public key dari server
-    const res = await fetch('/api/push');
-    const { publicKey } = await res.json();
-    if (!publicKey) return;
-
-    const existing = await _swReg.pushManager.getSubscription();
-    if (existing) { await existing.unsubscribe(); }
-
-    const sub = await _swReg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
-    });
-    _pushEndpoint = sub.endpoint;
-
-    // Kirim subscription ke server
-    await fetch('/api/push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ subscription: sub.toJSON() }),
-    });
-  } catch(e) { console.warn('Subscribe push gagal:', e); }
-}
-
-async function unsubscribePush() {
-  try {
-    if (_swReg) {
-      const sub = await _swReg.pushManager.getSubscription();
-      if (sub) {
-        await fetch('/api/push', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify({ endpoint: sub.endpoint }),
-        }).catch(() => {});
-        await sub.unsubscribe();
-      }
-    }
-  } catch(e) {}
 }
 
 init();
