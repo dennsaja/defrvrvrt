@@ -1,6 +1,14 @@
 const { createClient } = require("@supabase/supabase-js");
 const jwt = require("jsonwebtoken");
-const { sendPushToUser, sendPushToRole } = require("./push");
+
+// Push opsional — tidak crash jika web-push belum terinstall
+let sendPushToUser = async () => {};
+let sendPushToRole = async () => {};
+try {
+  const push = require("./push");
+  sendPushToUser = push.sendPushToUser || sendPushToUser;
+  sendPushToRole = push.sendPushToRole || sendPushToRole;
+} catch(e) { console.warn("Push module tidak tersedia:", e.message); }
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
