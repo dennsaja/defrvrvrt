@@ -1145,13 +1145,28 @@ function showPage(p) {
   if (p === 'dashboard') {
     updateNav();
     goTab('dash', document.getElementById('ni-dash'));
-    // Init push setelah login berhasil
-    initPush().then(() => requestPushPermission());
+    // Init push hanya jika belum pernah di-init
+    _initPushOnce();
   }
   if (p === 'admin') {
     renderAdmin();
-    initPush().then(() => requestPushPermission());
+    _initPushOnce();
   }
+}
+
+let _pushInited = false;
+async function _initPushOnce() {
+  if (_pushInited) return;
+  _pushInited = true;
+  await initPush();
+  // Cek permission yang sudah ada
+  if (Notification.permission === 'granted') {
+    await subscribePush();
+  } else if (Notification.permission === 'default') {
+    // Tunda sedikit agar UI sudah tampil dulu, lalu minta permission
+    setTimeout(() => requestPushPermission(), 2000);
+  }
+  // Kalau 'denied' — tidak bisa minta lagi, tampilkan panduan
 }
 
 function goTab(tab, el) {
@@ -1198,6 +1213,17 @@ async function renderDash() {
   const prb    = mine.filter(r => r.jenis_kegiatan === 'Perbaikan').length;
   const pml    = mine.filter(r => r.jenis_kegiatan === 'Pemeliharaan').length;
 
+  // Banner notifikasi — tampil jika permission belum granted
+  const pushBanner = ('Notification' in window && Notification.permission !== 'granted') ? `
+    <div style="background:linear-gradient(135deg,#1e293b,#334155);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="requestPushPermission()">
+      <div style="width:40px;height:40px;background:rgba(255,255,255,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🔔</div>
+      <div style="flex:1">
+        <div style="color:#fff;font-weight:700;font-size:13px;margin-bottom:2px">Aktifkan Notifikasi</div>
+        <div style="color:rgba(255,255,255,.6);font-size:11px">Terima notif tugas baru tanpa buka aplikasi</div>
+      </div>
+      <div style="color:rgba(255,255,255,.5);font-size:18px">›</div>
+    </div>` : '';
+
   const notifTugas = tugasPending.length > 0 ? `
     <div class="notif-tugas" onclick="goTab('tugas',document.getElementById('ni-tugas'))">
       <div class="notif-badge">${tugasPending.length} Tugas Baru</div>
@@ -1210,6 +1236,7 @@ async function renderDash() {
       <div class="dh-name">${currentUser.username}</div>
       <div class="dh-badge"><div class="dot"></div>${todayN} kegiatan hari ini</div>
     </div>
+    ${pushBanner}
     ${notifTugas}
     <div class="sgrid">
       <div class="sc"><div class="sc-icon" style="background:#E8F4FF"></div><div class="sc-n">${baru}</div><div class="sc-l">Pemasangan Baru</div></div>
@@ -1852,6 +1879,7 @@ function renderAdminTabs() {
     <div class="adm-hdr">
       <div><div class="adm-hdr-t"> Admin Panel</div><div class="adm-hdr-s">PT. Data Semesta · TeknisiApp</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${'Notification' in window && Notification.permission !== 'granted' ? `<button class="adm-refresh" onclick="requestPushPermission()" style="background:rgba(251,191,36,.2);border-color:rgba(251,191,36,.5);color:#92400e">🔔 Aktifkan Notif</button>` : ''}
         <button class="adm-refresh" onclick="renderAdmin()">Refresh</button>
       </div>
     </div>
@@ -3309,54 +3337,99 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 async function initPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.warn('Push tidak didukung browser ini');
+    return;
+  }
   try {
-    _swReg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    // Register service worker
+    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    // Tunggu SW aktif
+    await navigator.serviceWorker.ready;
+    _swReg = reg;
+
     // Dengarkan pesan dari SW (klik notif)
     navigator.serviceWorker.addEventListener('message', e => {
       if (e.data && e.data.type === 'NOTIF_CLICK') {
-        // Kalau klik notif tugas, langsung buka tab tugas
         if (currentUser && currentUser.role !== 'admin') {
           goTab('tugas', document.getElementById('ni-tugas'));
+        } else if (currentUser && currentUser.role === 'admin') {
+          renderAdmin();
         }
       }
     });
-  } catch(e) { console.warn('SW register gagal:', e); }
-}
-
-async function requestPushPermission() {
-  if (!_swReg) return;
-  try {
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-    await subscribePush();
-  } catch(e) { console.warn('Push permission gagal:', e); }
+    console.log('✅ Service Worker terdaftar');
+  } catch(e) {
+    console.warn('SW register gagal:', e.message);
+  }
 }
 
 async function subscribePush() {
   if (!_swReg) return;
   try {
-    // Ambil VAPID public key dari server
     const res = await fetch('/api/push');
+    if (!res.ok) return;
     const { publicKey } = await res.json();
-    if (!publicKey) return;
+    if (!publicKey) { console.warn('VAPID public key kosong — cek env VAPID_PUBLIC_KEY'); return; }
 
-    const existing = await _swReg.pushManager.getSubscription();
-    if (existing) { await existing.unsubscribe(); }
-
-    const sub = await _swReg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
-    });
+    // Pakai subscription yang sudah ada jika masih valid
+    let sub = await _swReg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await _swReg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
     _pushEndpoint = sub.endpoint;
 
-    // Kirim subscription ke server
+    // Kirim/update subscription ke server
     await fetch('/api/push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ subscription: sub.toJSON() }),
     });
-  } catch(e) { console.warn('Subscribe push gagal:', e); }
+    console.log('✅ Push notification aktif');
+  } catch(e) {
+    console.warn('Subscribe push gagal:', e.message);
+  }
+}
+
+async function requestPushPermission() {
+  if (!_swReg) return;
+  if (Notification.permission === 'denied') {
+    showPushDeniedBanner();
+    return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      await subscribePush();
+      hidePushDeniedBanner();
+    } else if (perm === 'denied') {
+      showPushDeniedBanner();
+    }
+  } catch(e) { console.warn('Push permission gagal:', e); }
+}
+
+function showPushDeniedBanner() {
+  if (document.getElementById('push-denied-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'push-denied-banner';
+  banner.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:480px;background:#1e293b;color:#fff;border-radius:14px;padding:12px 16px;z-index:9999;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.3);font-family:inherit';
+  banner.innerHTML = `
+    <div style="font-size:22px">🔔</div>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px">Notifikasi Diblokir</div>
+      <div style="font-size:11px;opacity:.75">Aktifkan notifikasi di pengaturan browser agar bisa terima tugas baru</div>
+    </div>
+    <button onclick="document.getElementById('push-denied-banner').remove()" style="background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer;padding:0">×</button>
+  `;
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 8000);
+}
+
+function hidePushDeniedBanner() {
+  document.getElementById('push-denied-banner')?.remove();
 }
 
 async function unsubscribePush() {

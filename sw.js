@@ -1,23 +1,43 @@
 // ── Service Worker TeknisiApp ─────────────────────────────────────
-// Handles Web Push Notifications for Android & Desktop
+const CACHE_NAME = 'teknisiapp-v2';
 
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('install', e => {
+  self.skipWaiting();
+});
 
-// Terima push dari server
+self.addEventListener('activate', e => {
+  e.waitUntil(self.clients.claim());
+});
+
+// ── PUSH: Terima notifikasi dari server ───────────────────────────
 self.addEventListener('push', function(event) {
-  let data = { title: 'TeknisiApp', body: 'Ada notifikasi baru', tag: 'default', url: '/' };
-  try { if (event.data) data = { ...data, ...event.data.json() }; } catch(e) {}
+  let data = {
+    title: 'TeknisiApp',
+    body: 'Ada notifikasi baru',
+    tag: 'default',
+    url: '/',
+    requireInteraction: false
+  };
+
+  try {
+    if (event.data) {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch(e) {
+    try { data.body = event.data ? event.data.text() : 'Notifikasi baru'; } catch(e2) {}
+  }
 
   const options = {
     body:    data.body,
-    tag:     data.tag || 'default',
+    tag:     data.tag || 'teknisiapp',
     icon:    '/icon-192.png',
-    badge:   '/badge-72.png',
-    vibrate: [200, 100, 200],
+    badge:   '/icon-192.png',
+    vibrate: [200, 100, 200, 100, 200],
     data:    { url: data.url || '/' },
+    requireInteraction: data.requireInteraction === true,
+    silent:  false,
     actions: data.actions || [],
-    requireInteraction: data.requireInteraction || false,
   };
 
   event.waitUntil(
@@ -25,20 +45,48 @@ self.addEventListener('push', function(event) {
   );
 });
 
-// Klik notifikasi — buka/fokus tab app
+// ── NOTIFICATIONCLICK: Buka/fokus app saat notif diklik ──────────
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+
+  const targetUrl = (event.notification.data && event.notification.data.url)
+    ? new URL(event.notification.data.url, self.location.origin).href
+    : self.location.origin;
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-      for (const client of clients) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.postMessage({ type: 'NOTIF_CLICK', url: targetUrl });
-          return client.focus();
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then(function(clientList) {
+        // Cari tab yang sudah buka app
+        for (const client of clientList) {
+          if (client.url.startsWith(self.location.origin)) {
+            client.postMessage({ type: 'NOTIF_CLICK', url: targetUrl });
+            return client.focus();
+          }
         }
-      }
-      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+        // Tidak ada tab terbuka — buka baru
+        return self.clients.openWindow(targetUrl);
+      })
+  );
+});
+
+// ── PUSHSUBSCRIPTIONCHANGE: Re-subscribe otomatis jika expired ────
+self.addEventListener('pushsubscriptionchange', function(event) {
+  event.waitUntil(
+    self.registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: event.oldSubscription
+        ? event.oldSubscription.options.applicationServerKey
+        : null
+    }).then(function(sub) {
+      // Kirim subscription baru ke server
+      return fetch('/api/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub.toJSON() })
+      });
+    }).catch(function(e) {
+      console.warn('Re-subscribe gagal:', e);
     })
   );
 });
