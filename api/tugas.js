@@ -55,23 +55,6 @@ async function uploadFotoToStorage(supabase, base64, supabaseUrl) {
   }
 }
 
-async function uploadFotoToStorage(supabase, base64, supabaseUrl) {
-  if (!base64 || !base64.includes(",")) return null;
-  try {
-    const ext = base64.startsWith("data:image/png") ? "png" : "jpg";
-    const fileName = "tugas_" + Date.now() + "." + ext;
-    const buffer = Buffer.from(base64.split(",")[1], "base64");
-    const contentType = ext === "png" ? "image/png" : "image/jpeg";
-    const { error } = await supabase.storage
-      .from("laporan-foto")
-      .upload(fileName, buffer, { contentType, upsert: false });
-    if (error) { console.warn("Storage upload error:", error.message); return null; }
-    return supabaseUrl + "/storage/v1/object/public/laporan-foto/" + fileName;
-  } catch (e) {
-    console.warn("Upload foto tugas gagal:", e.message);
-    return null;
-  }
-}
 
 const processingSelesai = new Set();
 
@@ -274,6 +257,15 @@ module.exports = async function handler(req, res) {
               if (userRow?.phone) hpTeknisi = userRow.phone;
             } catch(e) {}
 
+            // Generate report_id unik
+            const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
+            let report_id = `RPT-${dateStr}-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
+            for (let i = 0; i < 3; i++) {
+              const { data: existingRid } = await supabase.from("laporan").select("id").eq("report_id", report_id).limit(1);
+              if (!existingRid || existingRid.length === 0) break;
+              report_id = `RPT-${dateStr}-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
+            }
+
             const lapRow = {
               teknisi:        penyelesai,
               jenis_kegiatan: data.jenis_kegiatan,
@@ -286,33 +278,10 @@ module.exports = async function handler(req, res) {
               foto:           data.foto_selesai || data.foto || null,
               sumber:         "tugas",
               tugas_id:       id,
+              report_id,
             };
 
             await supabase.from("laporan").insert([lapRow]);
-
-            // Kirim ke Google Sheets supaya muncul di riwayat admin
-            const gsUrl = process.env.GS_SCRIPT_URL;
-            if (gsUrl && !gsUrl.includes("GANTI")) {
-              try {
-                await fetch(gsUrl, {
-                  method: "POST",
-                  headers: { "Content-Type": "text/plain" },
-                  body: JSON.stringify({
-                    teknisi:        penyelesai,
-                    hp:             hpTeknisi,
-                    jenis_kegiatan: data.jenis_kegiatan,
-                    tanggal:        lapRow.tanggal,
-                    waktu:          lapRow.waktu,
-                    nama_client:    data.nama_client || "-",
-                    tempat:         data.tempat      || "-",
-                    estimasi:       "-",
-                    catatan:        data.catatan     || "-",
-                    foto_url:       data.foto_selesai || data.foto || "-",
-                  }),
-                  signal: AbortSignal.timeout(10000),
-                });
-              } catch(e) { console.warn("Kirim Sheets dari tugas gagal:", e.message); }
-            }
           }
 
           // Broadcast selesai: hapus dari tabel tugas (tidak perlu muncul lagi)

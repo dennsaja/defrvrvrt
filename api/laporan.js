@@ -3,10 +3,9 @@ const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
-// Nilai yang diizinkan untuk jenis_kegiatan
-const VALID_JENIS = ["Pemasangan Baru", "Perbaikan", "Pemeliharaan"];
+// Whitelist jenis kegiatan — CCTV ditambahkan
+const VALID_JENIS = ["Pemasangan Baru", "Perbaikan", "Pemeliharaan", "Instalasi CCTV"];
 
-// Validasi UUID v4
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function verifyToken(req) {
@@ -15,17 +14,15 @@ function verifyToken(req) {
   return jwt.verify(auth.split(" ")[1], JWT_SECRET);
 }
 
-// Sanitasi string: batasi panjang, hilangkan null bytes
 function s(str, max = 500) {
   if (str === null || str === undefined) return null;
   return String(str).replace(/\0/g, "").trim().substring(0, max);
 }
 
-// Validasi base64 image: cek ukuran maks ~10MB (base64 ~13.3MB string)
 function validateBase64Image(b64) {
   if (!b64 || typeof b64 !== "string") return false;
   if (!b64.startsWith("data:image/")) return false;
-  if (b64.length > 14 * 1024 * 1024) return false; // ~10MB decoded
+  if (b64.length > 14 * 1024 * 1024) return false;
   if (!b64.includes(",")) return false;
   return true;
 }
@@ -54,18 +51,12 @@ async function uploadFotoToStorage(supabase, base64, supabaseUrl) {
   }
 }
 
-async function kirimKeSheets(gsScriptUrl, payload) {
-  if (!gsScriptUrl || gsScriptUrl.includes("GANTI")) return;
-  try {
-    await fetch(gsScriptUrl, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(10000), // timeout 10 detik
-    });
-  } catch (e) {
-    console.warn("Gagal kirim ke Sheets:", e.message);
-  }
+// Generate Report ID: RPT-YYYYMMDD-XXXX (4 huruf random)
+function generateReportId() {
+  const now = new Date();
+  const date = now.toISOString().split("T")[0].replace(/-/g, "");
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `RPT-${date}-${rand}`;
 }
 
 module.exports = async function handler(req, res) {
@@ -80,11 +71,23 @@ module.exports = async function handler(req, res) {
   if (req.method === "GET") {
     try {
       const decoded = verifyToken(req);
-      const { data, error } = await supabase
-        .from("laporan").select("*")
+      const { range } = req.query || {};
+
+      let query = supabase.from("laporan").select("*")
         .eq("teknisi", decoded.username)
-        .order("created_at", { ascending: false })
-        .limit(500); // batas maks baca
+        .order("created_at", { ascending: false });
+
+      if (range === "today") {
+        const today = new Date().toISOString().split("T")[0];
+        query = query.eq("tanggal", today);
+      } else if (range === "month") {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        query = query.gte("tanggal", d.toISOString().split("T")[0]);
+      }
+
+      query = query.limit(500);
+      const { data, error } = await query;
       if (error) return res.status(500).json({ error: "Gagal mengambil data" });
       return res.status(200).json(data || []);
     } catch (err) {
@@ -96,50 +99,47 @@ module.exports = async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const decoded = verifyToken(req);
-      const { jenis_kegiatan, tanggal, waktu, nama_client, tempat, estimasi, catatan, foto } = req.body || {};
+      const { jenis_kegiatan, tanggal, waktu, nama_client, tempat, estimasi, catatan, foto, paket, pppoe } = req.body || {};
 
-      // Validasi wajib
       if (!jenis_kegiatan || !tanggal || !waktu || !catatan)
         return res.status(400).json({ error: "Data tidak lengkap" });
 
-      // Whitelist jenis kegiatan
       if (!VALID_JENIS.includes(jenis_kegiatan))
-        return res.status(400).json({ error: "Jenis kegiatan tidak valid" });
+        return res.status(400).json({ error: "Jenis kegiatan tidak valid: " + jenis_kegiatan });
 
-      // Validasi format tanggal YYYY-MM-DD
       if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal))
         return res.status(400).json({ error: "Format tanggal tidak valid" });
 
-      // Validasi format waktu HH:MM
       if (!/^\d{2}:\d{2}$/.test(waktu))
         return res.status(400).json({ error: "Format waktu tidak valid" });
 
       const fotoUrl = await uploadFotoToStorage(supabase, foto, process.env.SUPABASE_URL);
 
+      // Generate report_id unik
+      let report_id = generateReportId();
+      // Pastikan unik (retry jika collision)
+      for (let i = 0; i < 3; i++) {
+        const { data: existing } = await supabase.from("laporan").select("id").eq("report_id", report_id).limit(1);
+        if (!existing || existing.length === 0) break;
+        report_id = generateReportId();
+      }
+
       const { data, error } = await supabase.from("laporan").insert([{
-        teknisi:       decoded.username,
+        teknisi:        decoded.username,
         jenis_kegiatan,
         tanggal,
         waktu,
-        nama_client:   s(nama_client, 100) || "-",
-        tempat:        s(tempat, 200)       || "-",
-        estimasi:      s(estimasi, 50)      || "-",
-        catatan:       s(catatan, 2000),
-        foto:          fotoUrl || null,
+        nama_client:    s(nama_client, 100) || "-",
+        tempat:         s(tempat, 200)       || "-",
+        estimasi:       s(estimasi, 50)      || "-",
+        catatan:        s(catatan, 2000),
+        foto:           fotoUrl || null,
+        paket:          jenis_kegiatan === "Pemasangan Baru" ? (s(paket, 100) || null) : null,
+        pppoe:          jenis_kegiatan === "Pemasangan Baru" ? (s(pppoe, 100) || null) : null,
+        report_id,
       }]).select().single();
 
-      if (error) return res.status(500).json({ error: "Gagal menyimpan laporan" });
-
-      await kirimKeSheets(process.env.GS_SCRIPT_URL, {
-        teknisi: decoded.username,
-        hp: "", // hp tidak ada di token, ambil dari profile jika butuh
-        jenis_kegiatan, tanggal, waktu,
-        nama_client: s(nama_client, 100) || "-",
-        tempat: s(tempat, 200) || "-",
-        estimasi: s(estimasi, 50) || "-",
-        catatan: s(catatan, 2000),
-        foto_url: fotoUrl || "-",
-      });
+      if (error) return res.status(500).json({ error: "Gagal menyimpan laporan: " + error.message });
 
       return res.status(200).json({ success: true, data, foto_url: fotoUrl });
     } catch (err) {
@@ -154,7 +154,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "PUT") {
     try {
       const decoded = verifyToken(req);
-      const { id, jenis_kegiatan, tanggal, waktu, nama_client, tempat, estimasi, catatan } = req.body || {};
+      const { id, jenis_kegiatan, tanggal, waktu, nama_client, tempat, estimasi, catatan, paket, pppoe } = req.body || {};
 
       if (!id) return res.status(400).json({ error: "id wajib diisi" });
       if (!UUID_RE.test(id)) return res.status(400).json({ error: "id tidak valid" });
@@ -168,7 +168,7 @@ module.exports = async function handler(req, res) {
       if (existing.teknisi !== decoded.username)
         return res.status(403).json({ error: "Akses ditolak" });
 
-      const { data, error } = await supabase.from("laporan").update({
+      const updateData = {
         jenis_kegiatan,
         tanggal,
         waktu,
@@ -176,7 +176,13 @@ module.exports = async function handler(req, res) {
         tempat:      s(tempat, 200)       || "-",
         estimasi:    s(estimasi, 50)      || "-",
         catatan:     s(catatan, 2000),
-      }).eq("id", id).select().single();
+      };
+      if (jenis_kegiatan === "Pemasangan Baru") {
+        updateData.paket = s(paket, 100) || null;
+        updateData.pppoe = s(pppoe, 100) || null;
+      }
+
+      const { data, error } = await supabase.from("laporan").update(updateData).eq("id", id).select().single();
 
       if (error) return res.status(500).json({ error: "Gagal update laporan" });
       return res.status(200).json({ success: true, data });

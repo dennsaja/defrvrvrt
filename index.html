@@ -1430,6 +1430,14 @@ function renderLap() {
           <label class="flbl">Tempat <span class="req">*</span></label>
           <input type="text" class="fi" id="fTempat" placeholder="Lokasi / alamat kegiatan">
         </div>
+        <div class="fg2" id="fieldPaket" style="display:none">
+          <label class="flbl">Paket Internet</label>
+          <input type="text" class="fi" id="fPaket" placeholder="Contoh: 20 Mbps, Paket Gold">
+        </div>
+        <div class="fg2" id="fieldPppoe" style="display:none">
+          <label class="flbl">Username PPPoE</label>
+          <input type="text" class="fi" id="fPppoe" placeholder="Username PPPoE client">
+        </div>
         <div class="fg2">
           <label class="flbl">Catatan Kegiatan <span class="req">*</span></label>
           <textarea class="fi" id="fCat" rows="3" placeholder="Deskripsi kegiatan yang dilakukan..." style="resize:vertical"></textarea>
@@ -1469,41 +1477,62 @@ function onJenisChange() {
   const fieldTempat     = document.getElementById('fieldTempat');
   const fieldNamaClient = document.getElementById('fieldNamaClient');
   const lblNamaClient   = document.getElementById('lblNamaClient');
+  const fieldPaket      = document.getElementById('fieldPaket');
+  const fieldPppoe      = document.getElementById('fieldPppoe');
   if (jenis === 'Pemasangan Baru') {
     fieldTempat.style.display = 'none';
     fieldNamaClient.style.display = 'block';
+    fieldPaket.style.display = 'block';
+    fieldPppoe.style.display = 'block';
     lblNamaClient.innerHTML = 'Nama Client <span class="req">*</span>';
     document.getElementById('fTempat').value = '';
   } else if (jenis === 'Instalasi CCTV') {
     // Instalasi CCTV: tampilkan client (wajib) + tempat
     fieldTempat.style.display = 'block';
     fieldNamaClient.style.display = 'block';
+    fieldPaket.style.display = 'none';
+    fieldPppoe.style.display = 'none';
     lblNamaClient.innerHTML = 'Nama Client <span class="req">*</span>';
   } else {
     // Perbaikan / Pemeliharaan
     fieldTempat.style.display = 'block';
     fieldNamaClient.style.display = 'block';
+    fieldPaket.style.display = 'none';
+    fieldPppoe.style.display = 'none';
     lblNamaClient.innerHTML = 'Nama Client <span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:4px;background:#E2E8F0;color:var(--t3)">Opsional</span>';
   }
 }
 
 // ================= RIWAYAT =================
-async function renderRiw() {
+let riwayatRange = 'today'; // default hari ini
+async function renderRiw(range) {
+  if (range) riwayatRange = range;
   const con = document.getElementById('con');
   con.innerHTML = `<div style="background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:12px;border:1px solid var(--bd);box-shadow:var(--sh)"><div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">Riwayat Laporan</div><div style="font-size:12px;color:var(--t2)">Mengambil data...</div></div><div class="loading-row"><div class="spin"></div><span>Mengambil data...</span></div>`;
   let rows = [];
   try {
-    const res = await fetch('/api/laporan', { headers: { Authorization: 'Bearer ' + token } });
-    if (res.ok) { rows = await res.json(); localStorage.setItem('tc_lap_cache', JSON.stringify(rows)); }
+    const res = await fetch('/api/laporan?range=' + riwayatRange, { headers: { Authorization: 'Bearer ' + token } });
+    if (res.ok) { rows = await res.json(); if (riwayatRange === 'all') localStorage.setItem('tc_lap_cache', JSON.stringify(rows)); }
     else throw new Error();
   } catch (e) {
     rows = JSON.parse(localStorage.getItem('tc_lap_cache') || '[]');
   }
   riwayatData = rows.filter(r => (r.teknisi || r['Teknisi'] || '') === currentUser.username);
   const mine = riwayatData;
-  const header = `<div style="background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:12px;border:1px solid var(--bd);box-shadow:var(--sh)"><div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">Riwayat Laporan</div><div style="font-size:12px;color:var(--t2)">${mine.length} laporan ditemukan</div></div>`;
+
+  const rangeLabels = { today: 'Hari Ini', month: '1 Bulan', all: 'Semua' };
+  const filterBar = `<div style="display:flex;gap:8px;margin-bottom:10px">
+    ${['today','month','all'].map(k => `<button onclick="renderRiw('${k}')" style="flex:1;padding:7px 4px;border-radius:10px;border:1.5px solid ${riwayatRange===k?'var(--red)':'var(--bd)'};background:${riwayatRange===k?'var(--red)':'#fff'};color:${riwayatRange===k?'#fff':'var(--t2)'};font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">${rangeLabels[k]}</button>`).join('')}
+  </div>`;
+
+  const header = `<div style="background:#fff;border-radius:var(--rad);padding:14px 16px;margin-bottom:12px;border:1px solid var(--bd);box-shadow:var(--sh)">
+    <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">Riwayat Laporan</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">${mine.length} laporan ditemukan · ${rangeLabels[riwayatRange]}</div>
+    ${filterBar}
+  </div>`;
+
   if (mine.length === 0) {
-    con.innerHTML = header + `<div class="empty"><div class="empty-icon"><svg class="ic-lg"><use href="#ic-history"/></svg></div><div class="et">Belum ada laporan</div><div class="es">Buat laporan kegiatan pertama</div></div>`;
+    con.innerHTML = header + `<div class="empty"><div class="empty-icon"><svg class="ic-lg"><use href="#ic-history"/></svg></div><div class="et">Belum ada laporan</div><div class="es">${riwayatRange==='today'?'Belum ada laporan hari ini':'Buat laporan kegiatan pertama'}</div></div>`;
     return;
   }
   con.innerHTML = header + mine.map((r, idx) => {
@@ -1512,11 +1541,12 @@ async function renderRiw() {
     const wkt = (r.waktu || r['Waktu'] || '-').substring(0, 5);
     const cli = r.nama_client || r['Nama Client'] || '-';
     const cat = r.catatan || r['Catatan'] || '-';
-    const ico = j === 'Pemasangan Baru' ? '<svg class="ic" style="color:var(--blue)"><use href="#ic-wifi"/></svg>' : j === 'Perbaikan' ? '<svg class="ic" style="color:var(--orange)"><use href="#ic-tool"/></svg>' : j === 'Instalasi CCTV' ? '' : '<svg class="ic" style="color:var(--green)"><use href="#ic-shield"/></svg>';
+    const rid = r.report_id || '';
+    const ico = j === 'Pemasangan Baru' ? '<svg class="ic" style="color:var(--blue)"><use href="#ic-wifi"/></svg>' : j === 'Perbaikan' ? '<svg class="ic" style="color:var(--orange)"><use href="#ic-tool"/></svg>' : j === 'Instalasi CCTV' ? '📷' : '<svg class="ic" style="color:var(--green)"><use href="#ic-shield"/></svg>';
     const bc  = j === 'Pemasangan Baru' ? 'bb' : j === 'Perbaikan' ? 'bp' : j === 'Instalasi CCTV' ? 'bi' : 'bm';
     const fotoUrl = r.foto || r['URL Foto'] || '';
     return `<div class="rc" onclick="showDetail(${idx})" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-      <div class="rt"><div><div class="rtype">${ico} ${j}</div><div class="rdate">${tgl} · ${wkt}</div></div><div class="rbadge ${bc}">${j === 'Pemasangan Baru' ? 'Baru' : j}</div></div>
+      <div class="rt"><div><div class="rtype">${ico} ${j}</div><div class="rdate">${tgl} · ${wkt}${rid ? ` · <span style="font-size:10px;color:var(--t3);font-weight:600">${rid}</span>` : ''}</div></div><div class="rbadge ${bc}">${j === 'Pemasangan Baru' ? 'Baru' : j}</div></div>
       <div class="rbody" style="margin-bottom:6px">${cat.length > 80 ? cat.substring(0, 80) + '...' : cat}</div>
       <div class="rmeta">${cli && cli !== '-' ? `<div class="mc"> ${cli}</div>` : ''}${fotoUrl && fotoUrl !== '-' ? '<div class="mc"> Ada foto</div>' : ''}<div class="mc" style="margin-left:auto;color:var(--red);font-weight:600"><svg class='ic-sm'><use href='#ic-arrow-right'/></svg></div></div>
     </div>`;
@@ -1536,17 +1566,21 @@ function showDetail(idx) {
   const cat     = r.catatan || r['Catatan'] || '-';
   const fotoUrl = r.foto || r['URL Foto'] || '';
   const ts      = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '-';
-  const ico     = j === 'Pemasangan Baru' ? '<svg class="ic" style="color:var(--blue)"><use href="#ic-wifi"/></svg>' : j === 'Perbaikan' ? '<svg class="ic" style="color:var(--orange)"><use href="#ic-tool"/></svg>' : j === 'Instalasi CCTV' ? '' : '<svg class="ic" style="color:var(--green)"><use href="#ic-shield"/></svg>';
-  const sumber  = r.sumber === 'tugas' ? ' Dari Tugas Admin' : null;
+  const rid     = r.report_id || '';
+  const paket   = r.paket || '';
+  const pppoe   = r.pppoe || '';
+  const ico     = j === 'Pemasangan Baru' ? '<svg class="ic" style="color:var(--blue)"><use href="#ic-wifi"/></svg>' : j === 'Perbaikan' ? '<svg class="ic" style="color:var(--orange)"><use href="#ic-tool"/></svg>' : j === 'Instalasi CCTV' ? '📷' : '<svg class="ic" style="color:var(--green)"><use href="#ic-shield"/></svg>';
+  const sumber  = r.sumber === 'tugas' ? '📋 Dari Tugas Admin' : null;
 
   document.getElementById('con').innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <button onclick="goTab('riw',document.getElementById('ni-riw'))" style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--bd);background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg class="ic-sm"><use href="#ic-chevron-left"/></svg></button>
+      <button onclick="renderRiw()" style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--bd);background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg class="ic-sm"><use href="#ic-chevron-left"/></svg></button>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700">Detail Laporan</div>
     </div>
     <div style="background:var(--red);border-radius:18px;padding:22px;margin-bottom:14px;color:#fff">
       <div style="font-size:11px;opacity:.6;margin-bottom:4px">Jenis Kegiatan</div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;margin-bottom:12px">${ico} ${j}</div>
+      ${rid ? `<div style="font-size:11px;opacity:.7;margin-bottom:8px;font-weight:600;letter-spacing:.5px">🔖 ${rid}</div>` : ''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div style="background:rgba(255,255,255,.15);padding:5px 10px;border-radius:50px;font-size:11px"> ${tgl}</div>
         <div style="background:rgba(255,255,255,.15);padding:5px 10px;border-radius:50px;font-size:11px"> ${wkt}</div>
@@ -1559,20 +1593,24 @@ function showDetail(idx) {
       <div class="fsec">Foto Dokumentasi</div>
       <img src="${fotoUrl}" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;cursor:pointer" onclick="window.open('${fotoUrl}','_blank')" onerror="this.parentElement.innerHTML='<div style=\\'text-align:center;padding:20px;color:var(--t3)\\'>Foto tidak dapat dimuat</div>'"/>
       <div style="font-size:11px;color:var(--t3);margin-top:6px;text-align:center">Tap untuk buka ukuran penuh</div>
-    </div>` : `<div class="fcard" style="margin-bottom:12px;padding:14px"><div class="fsec">Foto Dokumentasi</div><div style="text-align:center;padding:20px;color:var(--t3)"><div style="font-size:32px;margin-bottom:8px"></div><div style="font-size:13px">Tidak ada foto</div></div></div>`}
+    </div>` : `<div class="fcard" style="margin-bottom:12px;padding:14px"><div class="fsec">Foto Dokumentasi</div><div style="text-align:center;padding:20px;color:var(--t3)"><div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:13px">Tidak ada foto</div></div></div>`}
     <div class="fcard" style="margin-bottom:12px;padding:14px">
       <div class="fsec">Informasi Kegiatan</div>
       <div style="display:flex;flex-direction:column;gap:0">
+        ${rid ? `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">ID Laporan</span><span style="font-size:12px;font-weight:700;color:var(--red)">${rid}</span></div>` : ''}
         <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Teknisi</span><span style="font-size:13px;font-weight:600">${currentUser.username}</span></div>
         <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Tanggal</span><span style="font-size:13px;font-weight:600">${tgl}</span></div>
         <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Waktu</span><span style="font-size:13px;font-weight:600">${wkt}</span></div>
         <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Estimasi</span><span style="font-size:13px;font-weight:600">${estimasi !== '-' ? estimasi : '—'}</span></div>
         ${cli !== '-' ? `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Nama Client</span><span style="font-size:13px;font-weight:600">${cli}</span></div>` : ''}
         ${tempat !== '-' ? `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Tempat</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${tempat}</span></div>` : ''}
+        ${paket ? `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">Paket</span><span style="font-size:13px;font-weight:600">${paket}</span></div>` : ''}
+        ${pppoe ? `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--t3)">PPPoE</span><span style="font-size:13px;font-weight:600">${pppoe}</span></div>` : ''}
         <div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-size:12px;color:var(--t3)">Dibuat</span><span style="font-size:12px;color:var(--t2)">${ts}</span></div>
       </div>
     </div>
     <div class="fcard" style="padding:14px"><div class="fsec">Catatan Kegiatan</div><div style="font-size:13px;color:var(--t2);line-height:1.7;white-space:pre-wrap">${esc(cat)}</div></div>`;
+}
 }
 
 // ================= PROFIL =================
@@ -1767,15 +1805,17 @@ async function simpanProfil() {
 // Tampilkan halaman admin dengan loading
 // ── ADMIN STATE ───────────────────────────────────────────────────────
 let adminActiveTab = 'laporan'; // 'laporan' | 'tugas'
+let adminRange = 'today'; // default hari ini
 
-async function renderAdmin() {
+async function renderAdmin(range) {
+  if (range) adminRange = range;
   const con = document.getElementById('con-adm');
   con.innerHTML = `<div class="loading-row"><div class="spin" style="border-top-color:var(--adm)"></div><span>Memuat data...</span></div>`;
 
   try {
     // Ambil laporan, daftar teknisi (dari users), dan tugas sekaligus
     const [resAdmin, resTugas, resUsers] = await Promise.all([
-      fetch('/api/admin', { headers: { Authorization: 'Bearer ' + token } }),
+      fetch('/api/admin?range=' + adminRange, { headers: { Authorization: 'Bearer ' + token } }),
       fetch('/api/tugas',  { headers: { Authorization: 'Bearer ' + token } }),
       fetch('/api/users',  { headers: { Authorization: 'Bearer ' + token } })
     ]);
@@ -1788,8 +1828,7 @@ async function renderAdmin() {
     adminFiltered = [...adminData];
     if (resTugas.ok) tugasData = await resTugas.json();
 
-    // ✅ FIX: ambil daftar teknisi dari tabel users (bukan dari laporan)
-    // sehingga teknisi baru yang belum punya laporan pun muncul
+    // ambil daftar teknisi dari tabel users
     if (resUsers.ok) {
       const usersData = await resUsers.json();
       tugasTeknisiList = usersData
@@ -1797,7 +1836,6 @@ async function renderAdmin() {
         .map(u => u.username)
         .sort();
     } else {
-      // Fallback: dari laporan
       tugasTeknisiList = [...new Set(adminData.map(r => r['Teknisi'] || r.teknisi || '').filter(Boolean))].sort();
     }
 
@@ -1810,12 +1848,16 @@ async function renderAdmin() {
 function renderAdminTabs() {
   const con = document.getElementById('con-adm');
   const pendingCount = tugasData.filter(t => t.status === 'pending').length;
+  const rangeLabels = { today: 'Hari Ini', month: '1 Bulan', all: 'Semua' };
   con.innerHTML = `
     <div class="adm-hdr">
       <div><div class="adm-hdr-t"> Admin Panel</div><div class="adm-hdr-s">PT. Data Semesta · TeknisiApp</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="adm-refresh" onclick="renderAdmin()">Refresh</button>
       </div>
+    </div>
+    <div style="display:flex;gap:6px;padding:0 16px 10px;background:#fff;border-bottom:1px solid var(--bd)">
+      ${['today','month','all'].map(k => `<button onclick="renderAdmin('${k}')" style="flex:1;padding:6px 4px;border-radius:10px;border:1.5px solid ${adminRange===k?'var(--adm)':'var(--bd)'};background:${adminRange===k?'var(--adm)':'#fff'};color:${adminRange===k?'#fff':'var(--t2)'};font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">${rangeLabels[k]}</button>`).join('')}
     </div>
     <div class="adm-tab-bar">
       <button class="adm-tab ${adminActiveTab==='laporan'?'active':''}" onclick="switchAdminTab('laporan')"> Laporan <span style="background:rgba(255,255,255,.25);padding:1px 7px;border-radius:50px;font-size:11px;margin-left:4px">${adminData.length}</span></button>
@@ -1850,6 +1892,7 @@ function renderAdminTable() {
   const baru = adminData.filter(r => (r['Jenis Kegiatan']||'') === 'Pemasangan Baru').length;
   const prb  = adminData.filter(r => (r['Jenis Kegiatan']||'') === 'Perbaikan').length;
   const pml  = adminData.filter(r => (r['Jenis Kegiatan']||'') === 'Pemeliharaan').length;
+  const cctv = adminData.filter(r => (r['Jenis Kegiatan']||'') === 'Instalasi CCTV').length;
 
 
   con.innerHTML = `
@@ -1859,15 +1902,17 @@ function renderAdminTable() {
       <div class="adm-stat" style="border-color:#00C48C"><div class="adm-stat-n" style="color:#00C48C">${baru}</div><div class="adm-stat-l">Pemasangan Baru</div></div>
       <div class="adm-stat" style="border-color:#F59E0B"><div class="adm-stat-n" style="color:#F59E0B">${prb}</div><div class="adm-stat-l">Perbaikan</div></div>
       <div class="adm-stat" style="border-color:#8B5CF6"><div class="adm-stat-n" style="color:#8B5CF6">${pml}</div><div class="adm-stat-l">Pemeliharaan</div></div>
+      ${cctv > 0 ? `<div class="adm-stat" style="border-color:#7C3AED"><div class="adm-stat-n" style="color:#7C3AED">${cctv}</div><div class="adm-stat-l">Inst. CCTV</div></div>` : ''}
     </div>
 
     <div class="adm-controls">
-      <input type="text" class="adm-search" id="admSearch" placeholder="Cari teknisi, client, catatan..." oninput="filterAdmin()">
+      <input type="text" class="adm-search" id="admSearch" placeholder="Cari ID, teknisi, client, catatan..." oninput="filterAdmin()">
       <select class="adm-filter" id="admFilterJenis" onchange="filterAdmin()">
         <option value="">Semua Jenis</option>
         <option value="Pemasangan Baru"> Pemasangan Baru</option>
         <option value="Perbaikan"> Perbaikan</option>
         <option value="Pemeliharaan"> Pemeliharaan</option>
+        <option value="Instalasi CCTV">📷 Instalasi CCTV</option>
       </select>
       <select class="adm-filter" id="admFilterTeknisi" onchange="filterAdmin()">
         <option value="">Semua Teknisi</option>
@@ -1917,12 +1962,13 @@ function buildAdminRow(r, i) {
   const hp   = r['No HP'] || r.phone || '-';
   const ts   = r['Timestamp'] || r.created_at || '-';
   const foto = r['URL Foto'] || r.foto || '';
-  const bc   = j === 'Pemasangan Baru' ? 'background:#E8F4FF;color:#0066FF' : j === 'Perbaikan' ? 'background:#FFF8E6;color:#B7791F' : 'background:#E6FAF5;color:#00856E';
-  const ico  = j === 'Pemasangan Baru' ? '<svg class="ic" style="color:var(--blue)"><use href="#ic-wifi"/></svg>' : j === 'Perbaikan' ? '<svg class="ic" style="color:var(--orange)"><use href="#ic-tool"/></svg>' : '<svg class="ic" style="color:var(--green)"><use href="#ic-shield"/></svg>';
-  const idx  = adminFiltered.indexOf(r); // index dalam filtered array
+  const rid  = r.report_id || '';
+  const bc   = j === 'Pemasangan Baru' ? 'background:#E8F4FF;color:#0066FF' : j === 'Perbaikan' ? 'background:#FFF8E6;color:#B7791F' : j === 'Instalasi CCTV' ? 'background:#F3E8FF;color:#7C3AED' : 'background:#E6FAF5;color:#00856E';
+  const ico  = j === 'Pemasangan Baru' ? '<svg class="ic" style="color:var(--blue)"><use href="#ic-wifi"/></svg>' : j === 'Perbaikan' ? '<svg class="ic" style="color:var(--orange)"><use href="#ic-tool"/></svg>' : j === 'Instalasi CCTV' ? '📷' : '<svg class="ic" style="color:var(--green)"><use href="#ic-shield"/></svg>';
+  const idx  = adminFiltered.indexOf(r);
   return `<tr id="arow-${idx}">
     <td style="color:var(--t3);font-size:11px">${i+1}</td>
-    <td style="font-size:11px;color:var(--t3);white-space:nowrap">${ts}</td>
+    <td style="font-size:10px;color:var(--t3);white-space:nowrap">${rid ? `<span style="font-weight:700;color:var(--adm)">${rid}</span><br>` : ''}${ts.substring(0,16).replace('T',' ')}</td>
     <td style="cursor:pointer;color:var(--adm);font-weight:700" onclick="showAdminDetail(${idx})" title="Lihat detail">${tek}</td>
     <td style="font-size:12px">${hp}</td>
     <td><span class="adm-badge" style="${bc}">${ico} ${j}</span></td>
@@ -1957,13 +2003,17 @@ function showAdminDetail(idx) {
   const hp     = r['No HP'] || r.phone || '-';
   const ts     = r['Timestamp'] || r.created_at || '-';
   const foto   = r['URL Foto'] || r.foto || '';
-  const ico    = j === 'Pemasangan Baru' ? '<svg class="ic" style="color:var(--blue)"><use href="#ic-wifi"/></svg>' : j === 'Instalasi CCTV' ? '' : j === 'Perbaikan' ? '<svg class="ic" style="color:var(--orange)"><use href="#ic-tool"/></svg>' : '<svg class="ic" style="color:var(--green)"><use href="#ic-shield"/></svg>';
+  const rid    = r.report_id || '';
+  const paket  = r.paket || r['Paket'] || '';
+  const pppoe  = r.pppoe || r['PPPoE'] || '';
+  const ico    = j === 'Pemasangan Baru' ? '<svg class="ic" style="color:var(--blue)"><use href="#ic-wifi"/></svg>' : j === 'Instalasi CCTV' ? '📷' : j === 'Perbaikan' ? '<svg class="ic" style="color:var(--orange)"><use href="#ic-tool"/></svg>' : '<svg class="ic" style="color:var(--green)"><use href="#ic-shield"/></svg>';
   const grad   = j === 'Pemasangan Baru' ? 'linear-gradient(135deg,#0a2463,#0066FF)' : j === 'Instalasi CCTV' ? 'linear-gradient(135deg,#1a1a2e,#4a0080)' : j === 'Perbaikan' ? 'linear-gradient(135deg,#5c3a00,#F59E0B)' : 'linear-gradient(135deg,#003d2e,#00C48C)';
 
   openModal(`
     <div style="background:${grad};border-radius:14px;padding:20px;color:#fff;margin-bottom:16px">
       <div style="font-size:11px;opacity:.7;margin-bottom:4px">Detail Laporan</div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;margin-bottom:10px">${ico} ${j}</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;margin-bottom:6px">${ico} ${j}</div>
+      ${rid ? `<div style="font-size:12px;opacity:.8;font-weight:700;margin-bottom:8px">🔖 ${rid}</div>` : ''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px"> ${tgl}</span>
         <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:50px;font-size:11px"> ${wkt}</span>
@@ -1983,6 +2033,7 @@ function showAdminDetail(idx) {
 
     <div class="modal-card">
       <div class="modal-sec"> Informasi Kegiatan</div>
+      ${rid ? `<div class="modal-row"><span class="modal-lbl">ID Laporan</span><span class="modal-val" style="color:var(--adm);font-weight:700">${rid}</span></div>` : ''}
       <div class="modal-row"><span class="modal-lbl">Timestamp</span><span class="modal-val">${ts}</span></div>
       <div class="modal-row"><span class="modal-lbl">Teknisi</span><span class="modal-val">${tek}</span></div>
       <div class="modal-row"><span class="modal-lbl">No HP</span><span class="modal-val">${hp}</span></div>
@@ -1990,6 +2041,8 @@ function showAdminDetail(idx) {
       <div class="modal-row"><span class="modal-lbl">Waktu</span><span class="modal-val">${wkt}</span></div>
       <div class="modal-row"><span class="modal-lbl">Nama Client</span><span class="modal-val">${cli !== '-' ? cli : '—'}</span></div>
       ${tempat !== '-' ? `<div class="modal-row"><span class="modal-lbl">Tempat</span><span class="modal-val">${tempat}</span></div>` : ''}
+      ${paket ? `<div class="modal-row"><span class="modal-lbl">Paket</span><span class="modal-val">${paket}</span></div>` : ''}
+      ${pppoe ? `<div class="modal-row"><span class="modal-lbl">PPPoE</span><span class="modal-val">${pppoe}</span></div>` : ''}
     </div>
     <div class="modal-card">
       <div class="modal-sec"> Catatan Kegiatan</div>
@@ -2012,10 +2065,11 @@ function showEditModal(idx) {
   const cli    = r['Nama Client'] || r.nama_client || '';
   const tempat = r['Tempat'] || r.tempat || '';
   const cat    = r['Catatan'] || r.catatan || '';
+  const rid    = r.report_id || '';
 
   openModal(`
     <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px">Edit Laporan</div>
-    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">Teknisi: <strong>${r['Teknisi']||r.teknisi||'-'}</strong> · Baris ${r._rowIndex||'?'}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">Teknisi: <strong>${r['Teknisi']||r.teknisi||'-'}</strong>${rid ? ` · <span style="color:var(--adm);font-weight:700">${rid}</span>` : ''}</div>
 
     <div class="modal-sec">Jenis Kegiatan</div>
     <select id="editJenis" class="fi" style="margin-bottom:12px">
@@ -2067,28 +2121,26 @@ async function doEditLaporan(idx) {
 
   if (!jenis || !tgl || !wkt || !cat) { toast('Isi semua field!','err'); if(btn){btn.disabled=false;btn.textContent='Simpan Perubahan';} return; }
 
+  const supabaseId = r.id;
+  if (!supabaseId) { toast('ID laporan tidak ditemukan','err'); return; }
+
   try {
-    const updatedRow = { ...r, 'Jenis Kegiatan': jenis, 'Tanggal': tgl, 'Waktu': wkt, 'Nama Client': cli, 'Tempat': tempat, 'Catatan': cat };
     const res = await fetch('/api/admin', {
       method: 'PUT',
       headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
       body: JSON.stringify({
-        rowIndex: r._rowIndex,
-        supabaseId: r.id || r.supabase_id || null,   // kirim ID Supabase jika ada
-        data: updatedRow
+        supabaseId,
+        data: { 'Jenis Kegiatan': jenis, 'Tanggal': tgl, 'Waktu': wkt, 'Nama Client': cli, 'Tempat': tempat, 'Catatan': cat }
       })
     });
     const data = await res.json();
     if (!res.ok) { toast(data.error||'Gagal edit','err'); return; }
 
-    // Update lokal — semua field termasuk tempat
+    // Update lokal di kedua sisi (adminData & adminFiltered share same objects)
     r['Jenis Kegiatan'] = jenis; r['Tanggal'] = tgl;
     r['Waktu'] = wkt; r['Nama Client'] = cli; r['Tempat'] = tempat; r['Catatan'] = cat;
-    // Sync ke supabase cache lokal juga
     r.jenis_kegiatan = jenis; r.tanggal = tgl; r.waktu = wkt;
     r.nama_client = cli; r.tempat = tempat; r.catatan = cat;
-    const origIdx = adminData.indexOf(r);
-    if (origIdx >= 0) adminData[origIdx] = r;
 
     closeModal();
     toast('Laporan berhasil diubah!','ok');
@@ -2661,6 +2713,7 @@ function confirmDelete(idx) {
   const tek = r['Teknisi'] || '-';
   const tgl = r['Tanggal'] || '-';
   const j   = r['Jenis Kegiatan'] || '-';
+  const rid = r.report_id ? ` · ${r.report_id}` : '';
 
   openModal(`
     <div style="text-align:center;padding:8px 0">
@@ -2668,10 +2721,10 @@ function confirmDelete(idx) {
       <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin-bottom:8px;color:var(--t)">Hapus Laporan?</div>
       <div style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:8px">
         Kamu akan menghapus laporan milik <strong>${tek}</strong><br>
-        <strong>${j}</strong> tanggal <strong>${tgl}</strong>
+        <strong>${j}</strong> tanggal <strong>${tgl}</strong>${rid}
       </div>
       <div style="background:#FFF0F0;border:1px solid #FFCCCC;border-radius:10px;padding:10px;font-size:12px;color:var(--r);margin-bottom:20px">
-         Data akan dihapus permanen dari Google Sheets. Tindakan ini tidak bisa dibatalkan.
+        ⚠️ Data akan dihapus permanen dari database. Tindakan ini tidak bisa dibatalkan.
       </div>
       <div style="display:flex;gap:8px">
         <button onclick="closeModal()" class="btn-modal-action" style="background:#E2E8F0;color:var(--t);flex:1">Batal</button>
@@ -2687,22 +2740,19 @@ async function doDeleteLaporan(idx) {
   const btn = document.getElementById('btnDelConfirm');
   if (btn) { btn.disabled=true; btn.textContent='Menghapus...'; }
 
+  const supabaseId = r.id;
+  if (!supabaseId) { toast('ID laporan tidak ditemukan','err'); return; }
+
   try {
     const res = await fetch('/api/admin', {
       method: 'DELETE',
       headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
-      body: JSON.stringify({
-        rowIndex: r._rowIndex,
-        id: r.id || null,
-        teknisi: r['Teknisi'] || r.teknisi || '',
-        tanggal: r['Tanggal'] || r.tanggal || '',
-        waktu:   r['Waktu']   || r.waktu   || ''
-      })
+      body: JSON.stringify({ supabaseId })
     });
     const data = await res.json();
     if (!res.ok) { toast(data.error||'Gagal hapus','err'); return; }
 
-    // Hapus dari array lokal
+    // Hapus dari array lokal (adminData & adminFiltered share same objects)
     const aiIdx = adminData.indexOf(r);
     if (aiIdx >= 0) adminData.splice(aiIdx, 1);
     filterAdmin(); // re-filter dan re-render
@@ -2851,12 +2901,13 @@ function filterAdmin() {
   const tek   = document.getElementById('admFilterTeknisi')?.value || '';
 
   adminFiltered = adminData.filter(r => {
-    const j  = r['Jenis Kegiatan'] || r.jenis_kegiatan || '';
-    const t  = r['Teknisi'] || r.teknisi || '';
-    const cl = r['Nama Client'] || r.nama_client || '';
-    const ca = r['Catatan'] || r.catatan || '';
-    const hp = r['No HP'] || r.phone || '';
-    const matchQ   = !q || [t, cl, ca, j, hp].some(v => v.toLowerCase().includes(q));
+    const j   = r['Jenis Kegiatan'] || r.jenis_kegiatan || '';
+    const t   = r['Teknisi'] || r.teknisi || '';
+    const cl  = r['Nama Client'] || r.nama_client || '';
+    const ca  = r['Catatan'] || r.catatan || '';
+    const hp  = r['No HP'] || r.phone || '';
+    const rid = r.report_id || '';
+    const matchQ   = !q || [t, cl, ca, j, hp, rid].some(v => v.toLowerCase().includes(q));
     const matchJ   = !jenis || j === jenis;
     const matchTek = !tek || t === tek;
     return matchQ && matchJ && matchTek;
@@ -3133,6 +3184,8 @@ async function submitLap() {
   const client  = document.getElementById('fCli')?.value?.trim() || '-';
   const tempat  = document.getElementById('fTempat')?.value?.trim() || '-';
   const catatan = document.getElementById('fCat')?.value?.trim();
+  const paket   = document.getElementById('fPaket')?.value?.trim() || '';
+  const pppoe   = document.getElementById('fPppoe')?.value?.trim() || '';
 
   if (!jenis) { toast('Pilih jenis kegiatan!', 'err'); return; }
   if (!tanggal || !waktu) { toast('Tanggal dan waktu wajib diisi!', 'err'); return; }
@@ -3154,17 +3207,19 @@ async function submitLap() {
   showLoading('Menyimpan laporan...');
 
   try {
+    const body = { jenis_kegiatan: jenis, tanggal, waktu, nama_client: client, tempat, estimasi, catatan, foto: uploadedB64 };
+    if (jenis === 'Pemasangan Baru') { body.paket = paket; body.pppoe = pppoe; }
     const res = await fetch('/api/laporan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ jenis_kegiatan: jenis, tanggal, waktu, nama_client: client, tempat, estimasi, catatan, foto: uploadedB64 })
+      body: JSON.stringify(body)
     });
     const data = await res.json();
     hideLoading();
     if (!res.ok) { toast('Gagal: ' + (data.error || 'Server error'), 'err'); return; }
-    toast('Laporan berhasil dikirim!', 'ok');
+    toast('Laporan berhasil dikirim! ID: ' + (data.data?.report_id || ''), 'ok');
     const cache = JSON.parse(localStorage.getItem('tc_lap_cache') || '[]');
-    cache.unshift({ teknisi: currentUser.username, jenis_kegiatan: jenis, tanggal, waktu, nama_client: client, tempat, estimasi, catatan, created_at: new Date().toISOString() });
+    cache.unshift({ ...data.data, teknisi: currentUser.username, jenis_kegiatan: jenis, tanggal, waktu, nama_client: client, tempat, estimasi, catatan, paket, pppoe, created_at: new Date().toISOString() });
     localStorage.setItem('tc_lap_cache', JSON.stringify(cache));
     setTimeout(() => goTab('riw', document.getElementById('ni-riw')), 1500);
   } catch (err) {
@@ -3177,9 +3232,11 @@ async function submitLap() {
 
 // ================= SETUP MODAL =================
 function switchTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='supa')||(i===1&&tab==='sheets')));
-  document.getElementById('tab-supa').classList.toggle('active', tab==='supa');
-  document.getElementById('tab-sheets').classList.toggle('active', tab==='sheets');
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='supa')));
+  const ts = document.getElementById('tab-supa');
+  if (ts) ts.classList.toggle('active', tab==='supa');
+  const tsh = document.getElementById('tab-sheets');
+  if (tsh) tsh.classList.toggle('active', false);
 }
 function saveSupabase() {
   const url = document.getElementById('sUrl').value.trim();
@@ -3187,18 +3244,11 @@ function saveSupabase() {
   if (!url||!key) { toast('URL dan Key wajib diisi','err'); return; }
   cfg.supaUrl=url; cfg.supaKey=key;
   localStorage.setItem('tc_cfg', JSON.stringify(cfg));
-  toast('Supabase disimpan','ok'); switchTab('sheets');
+  toast('Supabase disimpan','ok');
+  setTimeout(()=>document.getElementById('setupModal').classList.remove('show'),800);
 }
-function skipToSheets() { switchTab('sheets'); }
-function saveSheets() {
-  const url = document.getElementById('gsUrl').value.trim();
-  const csv = document.getElementById('gsCsvUrl').value.trim();
-  if (!url) { toast('URL Web App wajib diisi','err'); return; }
-  cfg.gsUrl=url; if (csv) cfg.gsCsvUrl=csv;
-  localStorage.setItem('tc_cfg', JSON.stringify(cfg));
-  toast('Konfigurasi disimpan!','ok');
-  setTimeout(()=>document.getElementById('setupModal').classList.remove('show'),1000);
-}
+function skipToSheets() { document.getElementById('setupModal').classList.remove('show'); }
+function saveSheets() { document.getElementById('setupModal').classList.remove('show'); }
 function skipSheets() { document.getElementById('setupModal').classList.remove('show'); }
 
 // ================= HELPERS =================
