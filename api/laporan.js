@@ -3,10 +3,14 @@ const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
-// Whitelist jenis kegiatan — CCTV ditambahkan
+// Whitelist jenis kegiatan
 const VALID_JENIS = ["Pemasangan Baru", "Perbaikan", "Pemeliharaan", "Instalasi CCTV"];
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// Upload: konstanta
+const MAX_BASE64_LEN = Math.ceil(10 * 1024 * 1024 * 1.37); // ~10MB
+const ALLOWED_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 function verifyToken(req) {
   const auth = req.headers.authorization;
@@ -67,6 +71,71 @@ module.exports = async function handler(req, res) {
 
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+  // ── UPLOAD FOTO (dulunya /api/upload) ────────────────────────────
+  // POST /api/laporan?action=upload
+  if (req.method === "POST" && req.query.action === "upload") {
+    try {
+      verifyToken(req);
+
+      const { base64 } = req.body || {};
+      if (!base64 || typeof base64 !== "string")
+        return res.status(400).json({ error: "base64 diperlukan" });
+
+      if (base64.length > MAX_BASE64_LEN)
+        return res.status(400).json({ error: "File terlalu besar (maks 10MB)" });
+
+      if (!base64.startsWith("data:image/"))
+        return res.status(400).json({ error: "Hanya file gambar yang diizinkan" });
+
+      const mimeMatch = base64.match(/^data:(image\/[a-z]+);base64,/);
+      if (!mimeMatch) return res.status(400).json({ error: "Format base64 tidak valid" });
+      const mime = mimeMatch[1];
+      if (!ALLOWED_MIMES.includes(mime))
+        return res.status(400).json({ error: "Format gambar tidak didukung" });
+
+      const ext = mime.split("/")[1];
+      const fileName = `laporan_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const buffer = Buffer.from(base64.split(",")[1], "base64");
+
+      const { error } = await supabase.storage
+        .from("laporan")
+        .upload(fileName, buffer, { contentType: mime, upsert: false });
+
+      if (error) return res.status(500).json({ error: "Gagal upload: " + error.message });
+
+      const url = `${process.env.SUPABASE_URL}/storage/v1/object/public/laporan/${fileName}`;
+      return res.status(200).json({ url });
+
+    } catch (err) {
+      if (err.name === "JsonWebTokenError")
+        return res.status(401).json({ error: "Token tidak valid" });
+      return res.status(500).json({ error: "Internal error" });
+    }
+  }
+
+  // ── SUBMIT KE GOOGLE SHEETS (dulunya /api/submit) ────────────────
+  // POST /api/laporan?action=submit
+  if (req.method === "POST" && req.query.action === "submit") {
+    try {
+      verifyToken(req);
+
+      if (!process.env.GS_URL) {
+        return res.status(200).json({ success: true, note: "GS_URL tidak dikonfigurasi" });
+      }
+
+      await fetch(process.env.GS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(req.body)
+      });
+
+      return res.status(200).json({ success: true });
+
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // ── GET ─────────────────────────────────────────────────────────
   if (req.method === "GET") {
     try {
@@ -118,7 +187,6 @@ module.exports = async function handler(req, res) {
 
       // Generate report_id unik
       let report_id = generateReportId();
-      // Pastikan unik (retry jika collision)
       for (let i = 0; i < 3; i++) {
         const { data: existing } = await supabase.from("laporan").select("id").eq("report_id", report_id).limit(1);
         if (!existing || existing.length === 0) break;
