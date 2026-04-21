@@ -99,7 +99,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const decoded = verifyToken(req);
-      const { jenis_kegiatan, tanggal, waktu, nama_client, tempat, estimasi, catatan, foto, paket, pppoe } = req.body || {};
+      const { jenis_kegiatan, tanggal, waktu, nama_client, tempat, estimasi, catatan, foto, foto_2, paket, pppoe } = req.body || {};
 
       if (!jenis_kegiatan || !tanggal || !waktu || !catatan)
         return res.status(400).json({ error: "Data tidak lengkap" });
@@ -113,7 +113,8 @@ module.exports = async function handler(req, res) {
       if (!/^\d{2}:\d{2}$/.test(waktu))
         return res.status(400).json({ error: "Format waktu tidak valid" });
 
-      const fotoUrl = await uploadFotoToStorage(supabase, foto, process.env.SUPABASE_URL);
+      const fotoUrl  = await uploadFotoToStorage(supabase, foto,   process.env.SUPABASE_URL);
+      const fotoUrl2 = foto_2 ? await uploadFotoToStorage(supabase, foto_2, process.env.SUPABASE_URL) : null;
 
       // Generate report_id unik
       let report_id = generateReportId();
@@ -133,7 +134,8 @@ module.exports = async function handler(req, res) {
         tempat:         s(tempat, 200)       || "-",
         estimasi:       s(estimasi, 50)      || "-",
         catatan:        s(catatan, 2000),
-        foto:           fotoUrl || null,
+        foto:           fotoUrl  || null,
+        foto_2:         fotoUrl2 || null,
         paket:          jenis_kegiatan === "Pemasangan Baru" ? (s(paket, 100) || null) : null,
         pppoe:          jenis_kegiatan === "Pemasangan Baru" ? (s(pppoe, 100) || null) : null,
         report_id,

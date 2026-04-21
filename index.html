@@ -38,6 +38,8 @@
   <symbol id="ic-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
   <symbol id="ic-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></symbol>
   <symbol id="ic-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+  <symbol id="ic-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
+  <symbol id="ic-package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
   <symbol id="ic-bar-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
 </svg>
 
@@ -1089,6 +1091,10 @@ body{
       </div>
       <span class="ni-lbl">Tugas</span>
     </button>
+    <button class="ni" id="ni-barang" onclick="goTab('barang',this)">
+      <div class="ni-ico"><svg class="ic"><use href="#ic-box"/></svg></div>
+      <span class="ni-lbl">Barang</span>
+    </button>
     <button class="ni" id="ni-profil" onclick="goTab('profil',this)">
       <div class="ni-ico"><svg class="ic"><use href="#ic-user"/></svg></div>
       <span class="ni-lbl">Profil</span>
@@ -1121,6 +1127,9 @@ body{
 let cfg = JSON.parse(localStorage.getItem('tc_cfg')||'{}');
 let currentUser = JSON.parse(localStorage.getItem('tc_user')||'null');
 let uploadedB64 = null;
+let uploadedB64_2 = null; // foto dokumentasi ke-2 (opsional)
+let uploadedBarangB64 = null;
+let uploadedBarangB64_2 = null;
 let token = localStorage.getItem('token');
 let riwayatData = [];
 let adminData = [];
@@ -1130,13 +1139,71 @@ let tugasTeknisiList = [];
 let lastNotVerifiedEmail = '';
 
 // ================= INIT =================
+// Decode JWT expiry without library
+function getTokenExp(tok) {
+  try {
+    const payload = JSON.parse(atob(tok.split('.')[1]));
+    return payload.exp || 0;
+  } catch { return 0; }
+}
+
+function isTokenExpired(tok) {
+  if (!tok) return true;
+  const exp = getTokenExp(tok);
+  return exp > 0 && Date.now() / 1000 > exp;
+}
+
+function showSessionExpiredModal() {
+  // Clear state first
+  localStorage.removeItem('token');
+  localStorage.removeItem('tc_user');
+  token = null; currentUser = null;
+  riwayatData = []; adminData = []; adminFiltered = []; barangData = []; adminBarangData = [];
+
+  // Remove existing modal if any
+  document.getElementById('sessionModal')?.remove();
+
+  const m = document.createElement('div');
+  m.id = 'sessionModal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
+  m.innerHTML = `<div style="background:#fff;border-radius:20px;padding:32px 28px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="width:56px;height:56px;background:var(--red-ll);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+      <svg style="width:24px;height:24px;color:var(--red)"><use href="#ic-lock"/></svg>
+    </div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--txt)">Sesi Berakhir</div>
+    <div style="font-size:13px;color:var(--txt3);margin-bottom:24px;line-height:1.6">Sesi login Anda telah habis. Silakan login ulang untuk melanjutkan.</div>
+    <button onclick="document.getElementById('sessionModal').remove();showPage('login')" style="width:100%;padding:13px;background:var(--red);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Login Ulang</button>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+function checkAndRefreshToken() {
+  if (!token || !currentUser) return false;
+  if (isTokenExpired(token)) {
+    showSessionExpiredModal();
+    return false;
+  }
+  return true;
+}
+
 function init() {
   if (currentUser && token) {
+    // Cek apakah token sudah expired
+    if (isTokenExpired(token)) {
+      showSessionExpiredModal();
+      return;
+    }
     if (currentUser.role === 'admin') showPage('admin');
     else showPage('dashboard');
   } else {
     showPage('login');
   }
+  // Cek token setiap 5 menit saat app aktif
+  setInterval(() => {
+    if (token && currentUser && isTokenExpired(token)) {
+      showSessionExpiredModal();
+    }
+  }, 5 * 60 * 1000);
 }
 
 function showPage(p) {
@@ -1177,6 +1244,7 @@ function goTab(tab, el) {
   else if (tab === 'riw') renderRiw();
   else if (tab === 'tugas') renderTugasTeknisi();
   else if (tab === 'profil') renderProfil();
+  else if (tab === 'barang') renderBarang();
 }
 
 // ================= DASHBOARD =================
@@ -1309,7 +1377,7 @@ async function renderTugasTeknisi() {
         <div class="tugas-meta">
           ${t.nama_client && t.nama_client !== '-' ? `<span class="tugas-chip">👤 ${t.nama_client}</span>` : ''}
           ${t.tempat && t.tempat !== '-' ? `<span class="tugas-chip">📍 ${t.tempat}</span>` : ''}
-          ${t.link_maps ? `<a href="${t.link_maps}" target="_blank" class="tugas-chip" style="color:var(--adm);text-decoration:none">🗺️ Buka Maps</a>` : ''}
+          ${t.link_maps ? `<button onclick="openMaps('${t.link_maps}')" class="tugas-chip" style="color:var(--blue);background:var(--blue-l);border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--r-pill)"><svg style="width:12px;height:12px;vertical-align:middle;margin-right:3px"><use href="#ic-map"/></svg>Buka Maps</button>` : ''}
         </div>
         ${t.barang && t.barang !== '-' ? `<div class="tugas-barang">🧰 <strong>Barang dibawa:</strong> ${t.barang}</div>` : ''}
         <div class="tugas-catatan">📝 ${t.catatan}</div>
@@ -1416,6 +1484,7 @@ async function tandaiTugasSelesai(id, btn) {
 // ================= FORM LAPORAN =================
 function renderLap() {
   uploadedB64 = null;
+  uploadedB64_2 = null;
   const now = new Date();
   const d = now.toISOString().split('T')[0];
   const t = now.toTimeString().substring(0, 5);
@@ -1472,23 +1541,33 @@ function renderLap() {
 
         <div class="fsec">Dokumentasi Foto</div>
         <div class="fg2">
-          <label class="flbl">Foto Dokumentasi <span class="req">*</span></label>
+          <label class="flbl">Foto 1 <span class="req">*</span> <span style="font-size:10px;color:var(--txt4);font-weight:400">Wajib</span></label>
           <div class="upl" id="uplZone">
-            <input type="file" id="fFoto" accept="image/*,.heic,.heif,.webp,.bmp,.tiff,.tif" onchange="handleUpl(this)" style="display:none">
-            <input type="file" id="fKamera" accept="image/*" capture="environment" onchange="handleUpl(this)" style="display:none">
-            <div class="upl-t" id="uplTxt">Tap untuk pilih foto</div>
-            <div class="upl-s">JPG, PNG, HEIC, WEBP, dll · Maks 10MB</div>
+            <input type="file" id="fFoto" accept="image/*,.heic,.heif,.webp,.bmp,.tiff,.tif" onchange="handleUplSlot(this,1)" style="display:none">
+            <input type="file" id="fKamera" accept="image/*" capture="environment" onchange="handleUplSlot(this,1)" style="display:none">
+            <div class="upl-icon"><svg class="ic-lg"><use href="#ic-camera"/></svg></div>
+            <div class="upl-t" id="uplTxt">Foto utama dokumentasi</div>
+            <div class="upl-s">JPG, PNG, HEIC, WEBP · Maks 10MB</div>
             <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
-              <button type="button" onclick="event.stopPropagation();document.getElementById('fFoto').click()"
-                style="padding:7px 14px;border:1.5px solid var(--p);border-radius:8px;background:var(--red-ll);color:var(--red);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
-                Pilih File
-              </button>
-              <button type="button" onclick="event.stopPropagation();document.getElementById('fKamera').click()"
-                style="padding:7px 14px;border:1.5px solid var(--p);border-radius:8px;background:var(--red);color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
-                Buka Kamera
-              </button>
+              <button type="button" onclick="event.stopPropagation();document.getElementById('fFoto').click()" class="btn-upl btn-upl-ghost">Pilih File</button>
+              <button type="button" onclick="event.stopPropagation();document.getElementById('fKamera').click()" class="btn-upl btn-upl-solid">Kamera</button>
             </div>
             <img id="prevImg" class="prev">
+          </div>
+        </div>
+        <div class="fg2">
+          <label class="flbl">Foto 2 <span style="font-size:10px;color:var(--txt4);font-weight:400">Opsional</span></label>
+          <div class="upl" id="uplZone2">
+            <input type="file" id="fFoto2" accept="image/*,.heic,.heif,.webp,.bmp,.tiff,.tif" onchange="handleUplSlot(this,2)" style="display:none">
+            <input type="file" id="fKamera2" accept="image/*" capture="environment" onchange="handleUplSlot(this,2)" style="display:none">
+            <div class="upl-icon"><svg class="ic-lg"><use href="#ic-camera"/></svg></div>
+            <div class="upl-t" id="uplTxt2">Foto tambahan (opsional)</div>
+            <div class="upl-s">JPG, PNG, HEIC, WEBP · Maks 10MB</div>
+            <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
+              <button type="button" onclick="event.stopPropagation();document.getElementById('fFoto2').click()" class="btn-upl btn-upl-ghost">Pilih File</button>
+              <button type="button" onclick="event.stopPropagation();document.getElementById('fKamera2').click()" class="btn-upl btn-upl-solid">Kamera</button>
+            </div>
+            <img id="prevImg2" class="prev">
           </div>
         </div>
         <button class="btn-sub" id="btnSub" onclick="submitLap()">Kirim Laporan</button>
@@ -1592,6 +1671,7 @@ function showDetail(idx) {
   const estimasi= r.estimasi || r['Estimasi'] || '-';
   const cat     = r.catatan || r['Catatan'] || '-';
   const fotoUrl = r.foto || r['URL Foto'] || '';
+  const fotoUrl2 = r.foto_2 || '';
   const ts      = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '-';
   const rid     = r.report_id || '';
   const paket   = r.paket || '';
@@ -1618,9 +1698,15 @@ function showDetail(idx) {
     ${fotoUrl && fotoUrl !== '-' && fotoUrl !== '' ? `
     <div class="fcard" style="margin-bottom:12px;padding:14px">
       <div class="fsec">Foto Dokumentasi</div>
-      <img src="${fotoUrl}" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;cursor:pointer" onclick="window.open('${fotoUrl}','_blank')" onerror="this.parentElement.innerHTML='<div style=\\'text-align:center;padding:20px;color:var(--t3)\\'>Foto tidak dapat dimuat</div>'"/>
-      <div style="font-size:11px;color:var(--t3);margin-top:6px;text-align:center">Tap untuk buka ukuran penuh</div>
-    </div>` : `<div class="fcard" style="margin-bottom:12px;padding:14px"><div class="fsec">Foto Dokumentasi</div><div style="text-align:center;padding:20px;color:var(--t3)"><div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:13px">Tidak ada foto</div></div></div>`}
+      <div style="display:grid;grid-template-columns:${fotoUrl2 ? '1fr 1fr' : '1fr'};gap:8px">
+        <div>
+          ${fotoUrl2 ? '<div style="font-size:11px;color:var(--txt4);margin-bottom:5px;font-weight:500">Foto 1</div>' : ''}
+          <img src="${fotoUrl}" style="width:100%;max-height:240px;object-fit:cover;border-radius:var(--r8);cursor:pointer" onclick="window.open('${fotoUrl}','_blank')" onerror="this.style.display='none'"/>
+        </div>
+        ${fotoUrl2 ? '<div><div style="font-size:11px;color:var(--txt4);margin-bottom:5px;font-weight:500">Foto 2</div><img src="'+fotoUrl2+'" style="width:100%;max-height:240px;object-fit:cover;border-radius:var(--r8);cursor:pointer" onclick="window.open(this.src,\'_blank\')" onerror="this.style.display=\'none\'"/></div>' : ''}
+      </div>
+      <div style="font-size:11px;color:var(--txt3);margin-top:6px;text-align:center">Tap foto untuk buka ukuran penuh</div>
+    </div>` : `<div class="fcard" style="margin-bottom:12px;padding:14px"><div class="fsec">Foto Dokumentasi</div><div style="text-align:center;padding:20px;color:var(--txt4)"><div class="empty-icon" style="margin:0 auto 8px"><svg class="ic-lg"><use href="#ic-camera"/></svg></div><div style="font-size:13px">Tidak ada foto</div></div></div>`}
     <div class="fcard" style="margin-bottom:12px;padding:14px">
       <div class="fsec">Informasi Kegiatan</div>
       <div style="display:flex;flex-direction:column;gap:0">
@@ -1890,6 +1976,7 @@ function renderAdminTabs() {
       <button class="adm-tab ${adminActiveTab==='laporan'?'active':''}" onclick="switchAdminTab('laporan')"> Laporan <span style="background:rgba(255,255,255,.25);padding:1px 7px;border-radius:50px;font-size:11px;margin-left:4px">${adminData.length}</span></button>
       <button class="adm-tab ${adminActiveTab==='tugas'?'active':''}" onclick="switchAdminTab('tugas')"> Tugas ${pendingCount>0?`<span style="background:#f72e2e;padding:1px 7px;border-radius:50px;font-size:11px;margin-left:4px;color:#fff">${pendingCount}</span>`:''}</button>
       <button class="adm-tab ${adminActiveTab==='akun'?'active':''}" onclick="switchAdminTab('akun')"> Akun Teknisi</button>
+      <button class="adm-tab ${adminActiveTab==='barang'?'active':''}" onclick="switchAdminTab('barang')"> Barang</button>
     </div>
     <div id="adm-tab-content"></div>
   `;
@@ -1907,6 +1994,7 @@ function switchAdminTab(tab) {
 function renderAdminTabContent() {
   if (adminActiveTab === 'laporan') renderAdminTable();
   else if (adminActiveTab === 'tugas') renderAdminTugasPanel();
+  else if (adminActiveTab === 'barang') renderAdminBarangPanel();
   else renderAdminAkunPanel();
 }
 
@@ -2351,12 +2439,17 @@ function showBuatTugasModal() {
     <div class="modal-sec">Catatan <span style="color:var(--r)">*</span></div>
     <textarea id="tugasCatatan" class="fi" rows="3" placeholder="Deskripsi pekerjaan yang harus dilakukan..." style="resize:vertical;margin-bottom:12px"></textarea>
 
-    <div class="modal-sec">Foto / Dokumen Pendukung <span style="font-size:10px;color:var(--t3);font-weight:400">(opsional — teknisi akan upload foto saat selesai)</span></div>
-    <div class="upl" id="tugasUplZone" onclick="document.getElementById('tugasFotoInput').click()" style="margin-bottom:16px">
+    <div class="modal-sec">Foto Referensi <span style="font-size:10px;color:var(--txt4);font-weight:400">Opsional — panduan visual untuk teknisi</span></div>
+    <div class="upl" id="tugasUplZone" style="margin-bottom:16px">
       <input type="file" id="tugasFotoInput" accept="image/*,.heic,.heif,.webp,.bmp" style="display:none" onchange="handleTugasFoto(this)">
-      <div class="upl-ico">📎</div>
-      <div class="upl-t" id="tugasUplTxt">Tap untuk pilih foto referensi (opsional)</div>
+      <input type="file" id="tugasKameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleTugasFoto(this)">
+      <div class="upl-icon"><svg class="ic-lg"><use href="#ic-camera"/></svg></div>
+      <div class="upl-t" id="tugasUplTxt">Foto panduan / referensi</div>
       <div class="upl-s">JPG, PNG, HEIC, WEBP · Maks 10MB</div>
+      <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
+        <button type="button" onclick="event.stopPropagation();document.getElementById('tugasFotoInput').click()" class="btn-upl btn-upl-ghost">Pilih File</button>
+        <button type="button" onclick="event.stopPropagation();document.getElementById('tugasKameraInput').click()" class="btn-upl btn-upl-solid">Kamera</button>
+      </div>
       <img id="tugasFotoPreview" class="prev" style="display:none;max-height:120px">
     </div>
 
@@ -3100,108 +3193,61 @@ function doLogout() {
   unsubscribePush();
   localStorage.removeItem('token');
   localStorage.removeItem('tc_user');
-  currentUser = null; token = null; riwayatData = []; adminData = []; adminFiltered = [];
+  currentUser = null; token = null; riwayatData = []; adminData = []; adminFiltered = []; barangData = []; adminBarangData = [];
   showPage('login');
 }
 
 // ================= UPLOAD =================
 async function handleUpl(input) {
+  // Legacy single-slot handler — delegates to slot 1
+  await handleUplSlot(input, 1);
+}
+
+async function handleUplSlot(input, slot) {
   const file = input.files[0];
   if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { toast('File terlalu besar! Maks 10MB', 'err'); return; }
 
-  if (file.size > 10 * 1024 * 1024) {
-    toast('File terlalu besar! Maks 10MB', 'err');
-    return;
-  }
+  const zoneId  = slot === 2 ? 'uplZone2'  : 'uplZone';
+  const txtId   = slot === 2 ? 'uplTxt2'   : 'uplTxt';
+  const prevId  = slot === 2 ? 'prevImg2'  : 'prevImg';
 
-  const uplTxt = document.getElementById('uplTxt');
-  if (uplTxt) uplTxt.textContent = ' Memproses foto...';
+  const uplTxt = document.getElementById(txtId);
+  if (uplTxt) uplTxt.textContent = 'Memproses...';
 
   try {
     let blob = file;
-
-    // Konversi HEIC/HEIF ke JPEG menggunakan canvas
     const isHEIC = /heic|heif/i.test(file.type) || /\.heic$|\.heif$/i.test(file.name);
-
     if (isHEIC) {
-      // Load heic2any dari CDN untuk konversi HEIC
-      if (!window.heic2any) {
-        await loadScript('https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js');
-      }
+      if (!window.heic2any) await loadScript('https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js');
       try {
         blob = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
         if (Array.isArray(blob)) blob = blob[0];
-      } catch (heicErr) {
-        console.warn('heic2any gagal, coba canvas fallback:', heicErr);
-        // fallback tetap lanjut dengan file asli
-        blob = file;
-      }
+      } catch (e) { blob = file; }
     }
-
-    // Compress & resize via canvas
     const dataUrl = await readAsDataURL(blob);
     const compressed = await compressImage(dataUrl, 1200, 0.82);
-    uploadedB64 = compressed;
 
-    // Update UI
-    const prev = document.getElementById('prevImg');
-    const zone = document.getElementById('uplZone');
-    const txt  = document.getElementById('uplTxt');
+    if (slot === 2) uploadedB64_2 = compressed;
+    else uploadedB64 = compressed;
+
+    const prev = document.getElementById(prevId);
+    const zone = document.getElementById(zoneId);
+    const txt  = document.getElementById(txtId);
     const sizeKB = Math.round((compressed.length * 3) / 4 / 1024);
     if (prev) { prev.src = compressed; prev.style.display = 'block'; }
     if (zone) zone.classList.add('ok');
-    if (txt)  txt.textContent = ` ${file.name} (${sizeKB} KB)`;
-
+    if (txt) txt.textContent = `${file.name} (${sizeKB} KB)`;
   } catch (err) {
     console.error('Upload error:', err);
     toast('Gagal memproses foto: ' + err.message, 'err');
-    const txt = document.getElementById('uplTxt');
-    if (txt) txt.textContent = 'Tap untuk pilih foto';
+    const txt = document.getElementById(txtId);
+    if (txt) txt.textContent = slot === 2 ? 'Foto tambahan (opsional)' : 'Foto utama dokumentasi';
   }
-
-  // Reset input agar file yang sama bisa dipilih ulang
   input.value = '';
 }
 
-// Helper: load script dinamis
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = src; s.onload = resolve; s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
 
-// Helper: FileReader as Promise
-function readAsDataURL(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload  = e => resolve(e.target.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-// Helper: compress + resize image via canvas
-function compressImage(dataUrl, maxWidth, quality) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const scale  = Math.min(1, maxWidth / img.width);
-      const canvas = document.createElement('canvas');
-      canvas.width  = Math.round(img.width  * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', quality));
-    };
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-}
-
-// ================= SUBMIT LAPORAN =================
 async function submitLap() {
   const jenis   = document.querySelector('input[name="jenis"]:checked')?.value;
   const tanggal = document.getElementById('fTgl')?.value;
@@ -3234,7 +3280,7 @@ async function submitLap() {
   showLoading('Menyimpan laporan...');
 
   try {
-    const body = { jenis_kegiatan: jenis, tanggal, waktu, nama_client: client, tempat, estimasi, catatan, foto: uploadedB64 };
+    const body = { jenis_kegiatan: jenis, tanggal, waktu, nama_client: client, tempat, estimasi, catatan, foto: uploadedB64, foto_2: uploadedB64_2 || undefined };
     if (jenis === 'Pemasangan Baru') { body.paket = paket; body.pppoe = pppoe; }
     const res = await fetch('/api/laporan', {
       method: 'POST',
@@ -3311,6 +3357,331 @@ function greet() {
   const h = new Date().getHours();
   if (h<12) return 'Selamat Pagi,'; if (h<15) return 'Selamat Siang,';
   if (h<18) return 'Selamat Sore,'; return 'Selamat Malam,';
+}
+
+
+
+// ================= LAPORAN BARANG (TEKNISI) =================
+let barangData = [];
+let uploadedBarangB64 = null;
+let uploadedBarangB64_2 = null;
+
+async function renderBarang() {
+  const con = document.getElementById('con');
+  con.innerHTML = `
+    <div style="background:var(--white);border-radius:var(--r12);padding:14px 16px;margin-bottom:12px;border:1px solid var(--border);box-shadow:var(--sh-sm);display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:16px;font-weight:700">Laporan Barang</div>
+        <div style="font-size:12px;color:var(--txt3)">Pengambilan & penggunaan barang</div>
+      </div>
+      <button onclick="showFormBarang()" style="padding:9px 16px;background:var(--red);color:#fff;border:none;border-radius:var(--r8);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">+ Tambah</button>
+    </div>
+    <div class="loading-row"><div class="spin"></div><span>Memuat...</span></div>`;
+
+  try {
+    const res = await fetch('/api/barang', { headers: { Authorization: 'Bearer ' + token } });
+    if (res.ok) barangData = await res.json();
+    else throw new Error();
+  } catch (e) {
+    barangData = [];
+  }
+
+  const header = `
+    <div style="background:var(--white);border-radius:var(--r12);padding:14px 16px;margin-bottom:12px;border:1px solid var(--border);box-shadow:var(--sh-sm);display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:16px;font-weight:700">Laporan Barang</div>
+        <div style="font-size:12px;color:var(--txt3)">${barangData.length} laporan</div>
+      </div>
+      <button onclick="showFormBarang()" style="padding:9px 16px;background:var(--red);color:#fff;border:none;border-radius:var(--r8);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">+ Tambah</button>
+    </div>`;
+
+  if (barangData.length === 0) {
+    con.innerHTML = header + `<div class="empty"><div class="empty-icon"><svg class="ic-lg"><use href="#ic-box"/></svg></div><div class="et">Belum ada laporan barang</div><div class="es">Catat pengambilan barang dengan tombol Tambah</div></div>`;
+    return;
+  }
+
+  con.innerHTML = header + barangData.map((r, idx) => `
+    <div class="rc" style="cursor:default">
+      <div class="rt">
+        <div>
+          <div class="rtype" style="display:flex;align-items:center;gap:6px">
+            <svg class="ic-sm" style="color:var(--orange)"><use href="#ic-package"/></svg>
+            ${esc(r.nama_barang)}
+          </div>
+          <div class="rdate">${r.tanggal} · ${r.barang_id || ''}</div>
+        </div>
+        <span class="rbadge" style="background:var(--orange-l);color:#7A4A00">Barang</span>
+      </div>
+      <div class="rbody" style="margin-bottom:6px">${esc(r.keperluan || '-')}</div>
+      <div class="rmeta">
+        ${r.foto ? '<div class="mc"><svg class="ic-sm"><use href="#ic-camera"/></svg> Foto 1</div>' : ''}
+        ${r.foto_2 ? '<div class="mc"><svg class="ic-sm"><use href="#ic-camera"/></svg> Foto 2</div>' : ''}
+        <button onclick="showDetailBarang(${idx})" class="mc" style="margin-left:auto;color:var(--red);border:none;background:var(--red-ll);cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">Lihat Detail</button>
+      </div>
+    </div>`).join('');
+}
+
+function showFormBarang() {
+  uploadedBarangB64 = null;
+  uploadedBarangB64_2 = null;
+  const d = new Date().toISOString().split('T')[0];
+  const con = document.getElementById('con');
+  con.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button onclick="renderBarang()" style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+        <svg class="ic-sm"><use href="#ic-chevron-left"/></svg>
+      </button>
+      <div style="font-size:16px;font-weight:700">Laporan Pengambilan Barang</div>
+    </div>
+    <div class="fcard">
+      <div class="fsec">Informasi Barang</div>
+      <div class="fg2">
+        <label class="flbl">Nama Barang <span class="req">*</span></label>
+        <input type="text" class="fi" id="bNama" placeholder="Cth: Kabel UTP Cat6, Switch TP-Link 8 port">
+      </div>
+      <div class="fg2">
+        <label class="flbl">Tanggal Pengambilan <span class="req">*</span></label>
+        <input type="date" class="fi" id="bTgl" value="${d}">
+      </div>
+      <div class="fg2">
+        <label class="flbl">Keperluan <span class="req">*</span></label>
+        <textarea class="fi" id="bKeperluan" rows="3" placeholder="Jelaskan untuk kegiatan apa barang ini digunakan..." style="resize:vertical"></textarea>
+      </div>
+
+      <div class="fsec">Foto Barang</div>
+      <div class="fg2">
+        <label class="flbl">Foto Barang 1 <span class="req">*</span></label>
+        <div class="upl" id="bUplZone1">
+          <input type="file" id="bFoto1" accept="image/*,.heic,.heif,.webp" onchange="handleUplBarang(this,1)" style="display:none">
+          <input type="file" id="bKamera1" accept="image/*" capture="environment" onchange="handleUplBarang(this,1)" style="display:none">
+          <div class="upl-icon"><svg class="ic-lg"><use href="#ic-camera"/></svg></div>
+          <div class="upl-t" id="bUplTxt1">Foto kondisi barang</div>
+          <div class="upl-s">JPG, PNG, HEIC · Maks 10MB</div>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
+            <button type="button" onclick="event.stopPropagation();document.getElementById('bFoto1').click()" class="btn-upl btn-upl-ghost">Pilih File</button>
+            <button type="button" onclick="event.stopPropagation();document.getElementById('bKamera1').click()" class="btn-upl btn-upl-solid">Kamera</button>
+          </div>
+          <img id="bPrev1" class="prev">
+        </div>
+      </div>
+      <div class="fg2">
+        <label class="flbl">Foto Barang 2 <span style="font-size:10px;color:var(--txt4);font-weight:400">Opsional</span></label>
+        <div class="upl" id="bUplZone2">
+          <input type="file" id="bFoto2" accept="image/*,.heic,.heif,.webp" onchange="handleUplBarang(this,2)" style="display:none">
+          <input type="file" id="bKamera2b" accept="image/*" capture="environment" onchange="handleUplBarang(this,2)" style="display:none">
+          <div class="upl-icon"><svg class="ic-lg"><use href="#ic-camera"/></svg></div>
+          <div class="upl-t" id="bUplTxt2">Foto tambahan (opsional)</div>
+          <div class="upl-s">JPG, PNG, HEIC · Maks 10MB</div>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
+            <button type="button" onclick="event.stopPropagation();document.getElementById('bFoto2').click()" class="btn-upl btn-upl-ghost">Pilih File</button>
+            <button type="button" onclick="event.stopPropagation();document.getElementById('bKamera2b').click()" class="btn-upl btn-upl-solid">Kamera</button>
+          </div>
+          <img id="bPrev2" class="prev">
+        </div>
+      </div>
+
+      <button class="btn-sub" id="btnSubmitBarang" onclick="submitBarang()">Kirim Laporan Barang</button>
+    </div>`;
+}
+
+async function handleUplBarang(input, slot) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { toast('File terlalu besar! Maks 10MB', 'err'); return; }
+  const zoneId = slot === 2 ? 'bUplZone2' : 'bUplZone1';
+  const txtId  = slot === 2 ? 'bUplTxt2'  : 'bUplTxt1';
+  const prevId = slot === 2 ? 'bPrev2'    : 'bPrev1';
+  const txt = document.getElementById(txtId);
+  if (txt) txt.textContent = 'Memproses...';
+  try {
+    const dataUrl = await readAsDataURL(file);
+    const compressed = await compressImage(dataUrl, 1200, 0.82);
+    if (slot === 2) uploadedBarangB64_2 = compressed;
+    else uploadedBarangB64 = compressed;
+    const prev = document.getElementById(prevId);
+    const zone = document.getElementById(zoneId);
+    const sizeKB = Math.round((compressed.length * 3) / 4 / 1024);
+    if (prev) { prev.src = compressed; prev.style.display = 'block'; }
+    if (zone) zone.classList.add('ok');
+    if (txt) txt.textContent = file.name + ' (' + sizeKB + ' KB)';
+  } catch(e) {
+    toast('Gagal memproses foto', 'err');
+  }
+  input.value = '';
+}
+
+async function submitBarang() {
+  const nama     = document.getElementById('bNama')?.value?.trim();
+  const tanggal  = document.getElementById('bTgl')?.value;
+  const keperluan = document.getElementById('bKeperluan')?.value?.trim();
+
+  if (!nama)      { toast('Nama barang wajib diisi!', 'err'); return; }
+  if (!tanggal)   { toast('Tanggal wajib diisi!', 'err'); return; }
+  if (!keperluan) { toast('Keperluan wajib diisi!', 'err'); return; }
+  if (!uploadedBarangB64) { toast('Foto barang wajib diupload!', 'err'); return; }
+
+  const btn = document.getElementById('btnSubmitBarang');
+  if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
+  showLoading('Menyimpan laporan barang...');
+
+  try {
+    const res = await fetch('/api/barang', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ nama_barang: nama, tanggal, keperluan, foto: uploadedBarangB64, foto_2: uploadedBarangB64_2 || undefined })
+    });
+    const data = await res.json();
+    hideLoading();
+    if (!res.ok) { toast('Gagal: ' + (data.error || 'Server error'), 'err'); return; }
+    toast('Laporan barang berhasil dikirim!', 'ok');
+    uploadedBarangB64 = null;
+    uploadedBarangB64_2 = null;
+    setTimeout(() => renderBarang(), 1200);
+  } catch (err) {
+    hideLoading();
+    toast('Gagal konek ke server', 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Kirim Laporan Barang'; }
+  }
+}
+
+function showDetailBarang(idx) {
+  const r = barangData[idx];
+  if (!r) return;
+  const con = document.getElementById('con');
+  con.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button onclick="renderBarang()" style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+        <svg class="ic-sm"><use href="#ic-chevron-left"/></svg>
+      </button>
+      <div style="font-size:16px;font-weight:700">Detail Laporan Barang</div>
+    </div>
+
+    <div style="background:var(--orange);border-radius:var(--r16);padding:20px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden">
+      <div style="font-size:11px;opacity:.75;margin-bottom:4px">ID Laporan</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px;font-family:monospace">${esc(r.barang_id || '-')}</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:10px">${esc(r.nama_barang)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:var(--r-pill);font-size:11px">${r.tanggal}</span>
+        <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:var(--r-pill);font-size:11px">${esc(r.teknisi)}</span>
+      </div>
+    </div>
+
+    ${(r.foto || r.foto_2) ? `
+    <div class="fcard" style="margin-bottom:12px;padding:14px">
+      <div class="fsec">Foto Barang</div>
+      <div style="display:grid;grid-template-columns:${r.foto && r.foto_2 ? '1fr 1fr' : '1fr'};gap:10px">
+        ${r.foto ? `<div><div style="font-size:11px;color:var(--txt4);margin-bottom:6px">Foto 1</div><img src="${r.foto}" onclick="window.open('${r.foto}','_blank')" style="width:100%;border-radius:var(--r8);cursor:pointer;object-fit:cover;aspect-ratio:1" onerror="this.style.display='none'"></div>` : ''}
+        ${r.foto_2 ? `<div><div style="font-size:11px;color:var(--txt4);margin-bottom:6px">Foto 2</div><img src="${r.foto_2}" onclick="window.open('${r.foto_2}','_blank')" style="width:100%;border-radius:var(--r8);cursor:pointer;object-fit:cover;aspect-ratio:1" onerror="this.style.display='none'"></div>` : ''}
+      </div>
+    </div>` : ''}
+
+    <div class="fcard" style="padding:14px">
+      <div class="fsec">Informasi Barang</div>
+      <div style="display:flex;flex-direction:column;gap:0">
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--txt3)">Teknisi</span><span style="font-size:13px;font-weight:600">${esc(r.teknisi)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--txt3)">Tanggal</span><span style="font-size:13px;font-weight:600">${r.tanggal}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--txt3)">Nama Barang</span><span style="font-size:13px;font-weight:600">${esc(r.nama_barang)}</span></div>
+        <div style="padding:9px 0"><span style="font-size:12px;color:var(--txt3);display:block;margin-bottom:6px">Keperluan</span><div style="font-size:13px;color:var(--txt2);line-height:1.6;white-space:pre-wrap">${esc(r.keperluan || '-')}</div></div>
+      </div>
+    </div>`;
+}
+
+// ================= ADMIN BARANG PANEL =================
+let adminBarangData = [];
+
+async function renderAdminBarangPanel() {
+  const con = document.getElementById('adm-tab-content') || document.getElementById('con-adm');
+  con.innerHTML = `<div class="loading-row"><div class="spin" style="border-top-color:var(--adm)"></div><span>Memuat laporan barang...</span></div>`;
+
+  try {
+    const res = await fetch('/api/barang', { headers: { Authorization: 'Bearer ' + token } });
+    if (res.ok) adminBarangData = await res.json();
+    else throw new Error(await res.text());
+  } catch (e) {
+    con.innerHTML = `<div style="padding:24px;color:var(--red)">Gagal memuat: ${e.message}</div>`;
+    return;
+  }
+
+  const data = adminBarangData;
+  const teknisiSet = new Set(data.map(r => r.teknisi || ''));
+
+  con.innerHTML = `
+    <div class="adm-stats">
+      <div class="adm-stat"><div class="adm-stat-n">${data.length}</div><div class="adm-stat-l">Total Laporan Barang</div></div>
+      <div class="adm-stat" style="border-color:var(--orange)"><div class="adm-stat-n" style="color:var(--orange)">${teknisiSet.size}</div><div class="adm-stat-l">Teknisi</div></div>
+    </div>
+
+    <div class="adm-controls">
+      <div class="adm-search-wrap">
+        <svg class="ic-sm"><use href="#ic-search"/></svg>
+        <input type="text" class="adm-search" id="barangSearch" placeholder="Cari nama barang, teknisi, keperluan..." oninput="filterBarangAdmin()">
+      </div>
+      <span style="font-size:12px;color:var(--txt3);white-space:nowrap">${data.length} laporan</span>
+    </div>
+
+    <div class="tbl-wrap">
+      ${data.length === 0
+        ? `<div class="adm-empty"><div class="empty-icon" style="margin:0 auto 12px"><svg class="ic-lg"><use href="#ic-box"/></svg></div><div style="font-weight:600;color:var(--txt2)">Belum ada laporan barang</div></div>`
+        : `<div style="overflow-x:auto"><table class="tbl">
+            <thead><tr>
+              <th>No</th><th>ID Barang</th><th>Tanggal</th><th>Teknisi</th><th>Nama Barang</th><th>Keperluan</th><th>Foto</th><th>Aksi</th>
+            </tr></thead>
+            <tbody id="barangTbody">
+              ${data.map((r, i) => buildBarangRow(r, i)).join('')}
+            </tbody>
+          </table></div>`}
+    </div>`;
+}
+
+function buildBarangRow(r, i) {
+  const foto = r.foto || '';
+  const foto2 = r.foto_2 || '';
+  return `<tr>
+    <td style="color:var(--txt4);font-size:11px">${i+1}</td>
+    <td style="font-size:11px;font-family:monospace;color:var(--adm);font-weight:600">${esc(r.barang_id||'-')}</td>
+    <td style="white-space:nowrap">${r.tanggal||'-'}</td>
+    <td style="font-weight:600">${esc(r.teknisi||'-')}</td>
+    <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.nama_barang)}">${esc(r.nama_barang)}</td>
+    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--txt3)" title="${esc(r.keperluan||'')}">${esc(r.keperluan||'-')}</td>
+    <td>
+      <div style="display:flex;gap:4px">
+        ${foto ? `<img src="${foto}" onclick="window.open('${foto}','_blank')" class="tbl-foto" title="Foto 1">` : '<span style="font-size:11px;color:var(--txt4)">—</span>'}
+        ${foto2 ? `<img src="${foto2}" onclick="window.open('${foto2}','_blank')" class="tbl-foto" title="Foto 2">` : ''}
+      </div>
+    </td>
+    <td>
+      <button onclick="confirmDeleteBarang('${r.id}')" class="btn-act btn-del" title="Hapus">
+        <svg class="ic-sm"><use href="#ic-trash"/></svg>
+      </button>
+    </td>
+  </tr>`;
+}
+
+function filterBarangAdmin() {
+  const q = (document.getElementById('barangSearch')?.value || '').toLowerCase();
+  const filtered = adminBarangData.filter(r =>
+    [r.nama_barang, r.teknisi, r.keperluan, r.barang_id].some(v => (v||'').toLowerCase().includes(q))
+  );
+  const tbody = document.getElementById('barangTbody');
+  if (tbody) tbody.innerHTML = filtered.map((r, i) => buildBarangRow(r, i)).join('');
+}
+
+async function confirmDeleteBarang(id) {
+  if (!confirm('Hapus laporan barang ini? Tindakan tidak bisa dibatalkan.')) return;
+  try {
+    const res = await fetch('/api/barang', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ id })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || 'Gagal hapus', 'err'); return; }
+    toast('Laporan barang dihapus', 'ok');
+    renderAdminBarangPanel();
+  } catch(e) {
+    toast('Gagal konek server', 'err');
+  }
 }
 
 
@@ -3446,6 +3817,27 @@ async function unsubscribePush() {
       }
     }
   } catch(e) {}
+}
+
+
+// Buka Google Maps — app native lebih diprioritaskan
+function openMaps(url) {
+  if (!url) return;
+  // Jika URL sudah berisi koordinat atau google maps, buka langsung
+  // Coba buka app Google Maps native dulu, fallback ke browser
+  try {
+    const u = new URL(url);
+    // Ekstrak query params dari berbagai format URL gmaps
+    let query = u.searchParams.get('q') || u.searchParams.get('query') || '';
+    const lat  = u.searchParams.get('lat');
+    const lng  = u.searchParams.get('lng');
+    if (!query && lat && lng) query = lat + ',' + lng;
+    // Coba buka dengan intent gmaps (Android) atau universal link (iOS)
+    const geoUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query || url)}`;
+    window.open(geoUrl, '_blank');
+  } catch(e) {
+    window.open(url, '_blank');
+  }
 }
 
 init();
